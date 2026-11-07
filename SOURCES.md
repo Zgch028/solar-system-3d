@@ -239,7 +239,7 @@ lon_J2000 = (lon_date − p/3600) mod 360
 
 `build/make_publish.py` 生成 `publish/`（22 个文件 / 约 2.8 MB / 含 `.nojekyll`），刻意保留 ESM 源、构建脚本、golden file 与三套校验脚本，使第三方能在发布目录内独立复核，而不是只拿到压缩产物。`build/verify_http.py` 在线程里起临时静态服务，逐项校验 15 个资源的 HTTP 200 / MIME / 字节哈希后自动关闭，不占用固定端口。
 
-`python3 verify_compat.py`（作品目录）与 `python3 verify_compat.py --root publish` 各 **8/8 通过**：无 importmap/ESM、零运行时外链、og 齐全一致、预览图有效、IIFE 导出完整、WebGL 禁用端到端降级、16 组星历仍 16/16 PASS、页面与命令行自检逐行一致（最大差 0.00e+00，最大 |Δ黄经| 0.1437°）。`build/verify_http.py` 另在临时静态服务上完成 15/15 个资源的 200 / MIME / 字节哈希验收。
+`python3 verify_compat.py`（作品目录）与 `python3 verify_compat.py --root publish` 各 **8/8 通过**：无 importmap/ESM、零运行时外链、og 齐全一致、预览图有效、IIFE 导出完整、WebGL 禁用端到端降级、16 组星历仍 16/16 PASS、页面与命令行自检逐行一致（最大差 0.00e+00，最大 |Δ黄经| 0.1437°）。`build/verify_http.py` 另在临时静态服务上完成 15/15 个资源的 200 / MIME / 字节哈希验收。（**v1.3 起升级为 9/9 与 16/16，并新增 23 文件，见 §4.6**；此处保留 v1.2 当时的快照。）
 
 **⑤ 发布已执行（2026-11-07）**
 
@@ -261,6 +261,28 @@ lon_J2000 = (lon_date − p/3600) mod 360
 **仍待人工确认**：真实手机微信内核的端到端 3D 渲染与分享卡片抓取（本地 stub 验收不能替代）；`github.io` 为境外未备案域名，微信内打开可能被提示「在浏览器中打开」。
 
 **新增已知限制**：① 未在真实手机微信／小红书内核中做端到端渲染确认（需人工打开线上链接）；② `og:image` 为绝对 URL，仓库或 owner 改名必须重跑 `set_pages_base.py` 并同步更新 README；③ `github.io` 为境外未备案域名，微信内置浏览器可能提示「在浏览器中打开」，属平台策略，非作品缺陷；④ IIFE 产物未压缩（1.3 MB），换取可逐字审计。
+
+### §4.6 手机微信真机首次打开暴露的兼容性缺陷与修复（2026-11-07，v1.3）
+
+**现象（用户提供真机截图，可证伪）**：手机微信内置浏览器打开线上站点，未出现 3D，而是显示内联 SVG 静态降级视图；标题写「静态降级视图 · 当前环境未启用 WebGL」，原因行写「3D 初始化异常：Can't find variable: OrbitControls」；同时「内置数值自检 16/16 PASS · 最大 |Δ黄经| 0.1437°」仍正常显示，八个行星标签与太阳齐全。
+
+**判定**：降级兜底本身按设计生效（不白屏、物理自检不受影响），**但触发原因不正常**。原因行不是「浏览器未提供 WebGL 上下文」，说明该微信内核的 WebGL 探测是通过的、WebGL 能力可用；失败点在 3D 层代码，而非环境。
+
+**根因**：`build/build_iife.py` 生成的 `vendor/three.iife.js` 把 415 个 Three.js 导出写成 `window.THREE = {...}`，并在文件末尾单独追加 `window.THREE.OrbitControls = OrbitControls`。3D 层前置检查 `typeof window.THREE.OrbitControls==='function'` 因此通过，但构造控制器处写的是裸标识符 `new OrbitControls(camera,canvas)`，该作用域只绑定了 `const THREE=window.THREE`。浏览器里没有全局 `OrbitControls` 变量 → `ReferenceError`（WebKit 措辞 `Can't find variable: OrbitControls`，V8 为 `OrbitControls is not defined`）→ 被 3D 层 try/catch 捕获 → 调用降级。**属符号引用错误，不是 WebGL 能力问题，也不涉及任何物理或数值。**
+
+**为什么原来 8 项本机验收没抓到**：`verify_compat.py` 第 6 项只模拟「WebGL 被禁用」，3D 层在探测处提前 `return`，从未执行到构造控制器处；静态检查与降级路径的 DOM stub 都覆盖不到这条分支。这正是「本地 stub 不能替代真机」的实证。
+
+**修复（3 处，全在交付层）**：
+
+1. 构造控制器处改为 `new THREE.OrbitControls(camera,canvas)`，显式从全局命名空间取类。
+2. 降级标题不再写死「当前环境未启用 WebGL」：HTML 默认中性标题并加 `id="fb-title"`，`render(reason)` 按真实原因分类 —— 含 `WebGL|上下文` → 「静态降级视图 · WebGL 不可用」；其余（初始化异常／渲染帧异常／bundle 缺失）→ 「静态降级视图 · 3D 渲染未能启动」。避免把代码缺陷误报成环境限制，也便于用户据原因行反馈。
+3. 新增 `build/verify_runtime.mjs` 补上被漏掉的「WebGL 可用」路径：在 Node 里加载**真实的** `vendor/three.iife.js`（415 个真类 + OrbitControls），只把需要 GPU／DOM 事件的 `WebGLRenderer`、`OrbitControls` 换成可计数 stub，端到端执行数值层／降级层／3D 层，断言不降级、`__BOOTED`／`__MODE3D__` 已设置且两个类各构造 1 次。接入 `verify_compat.py` 成为第 9 项；第 6 项同步增加两类标题的分类断言。
+
+**回归有效性（负向验证，实跑）**：把构造控制器处人为改回裸 `OrbitControls` 后，对临时副本执行 `node build/verify_runtime.mjs --root <副本>`，以退出码 1 失败并输出 `OrbitControls 构造次数 = 0`、`3D 层意外触发降级视图：原因：3D 初始化异常：OrbitControls is not defined`、`[3D] 初始化失败 ReferenceError: OrbitControls is not defined` —— 与截图同一异常。证明该测试确实能拦住此缺陷，而不是摆设。
+
+**修复后验收（实跑）**：`verify_compat.py` 在作品目录与 `publish/` 各 **9/9**；`build/verify_http.py` **16/16**；`node verify.mjs` 仍 **16/16 PASS、最大 |Δ黄经| 0.1437°**，`verify_page.py` 逐行差 **0.00e+00**；规格书 V1 与技能包 `prompts-v1-web.md` 仍逐字一致（3517 字符）。`publish/` 由 22 文件增至 **23 文件 / 约 2.79 MB**（新增 `build/verify_runtime.mjs`）。物理与数值一行未动。
+
+**仍待人工**：修复版上线后，用同一台手机微信重新打开链接，确认 3D 正常渲染、拖拽旋转／缩放可用、分享卡片抓取正常；真机内核能力不能被任何 Node stub 替代。
 
 ---
 
@@ -294,7 +316,8 @@ JPL 六根数与世纪变率、开普勒方程求解、J2000 黄道坐标旋转�
 | 13 | 交付「单个 `index.html`」 | 主文件改名 **`太阳系八大行星动态运转.html`**（中文、易识别）；`index.html` 保留为薄重定向，不再是内容副本 | 用户反馈"打开作品名称不是中文、不易识别"；重定向保证既有链接与静态服务根路径仍可用，同时维持**单一事实来源**，避免两份内容分叉 |
 | 14 | 规格 V1 §0 写「importmap 指本地 vendor，仍须静态服务」 | 改写为「普通 script + IIFE 全局包，须能 `file://` 双击打开」，并逐字同步技能包 `references/prompts-v1-web.md` | 载体从本地预览变为微信内核／GitHub Pages，属载体绑定约束（四问框架 Q1）；Q4 判据、决策链、定位卡字段均未改动，故方法论文档版本仍为 v1.1 |
 | 15 | V1 未要求 WebGL 降级、分享元信息与 AI 标注 | 新增 WebGL 探测 + 内联 SVG 静态降级 + og/twitter 元信息 + `assets/preview.png` + 页面与 og 中的 AI 辅助创作标注 | 分享场景的隐含需求；均为交付形态，不动物理与数值。见 §4.5 |
-| 16 | 单文件交付 | 发布版为 `publish/` 目录（22 文件 / 约 2.8 MB：ESM 源、IIFE 产物、构建脚本、golden file、三套校验脚本、许可证） | 换取第三方逐字复核能力；页面运行时仍只需 1 个 HTML + 1 个 JS + 1 张分享图，且分享图对运行非必需 |
+| 16 | 单文件交付 | 发布版为 `publish/` 目录（v1.3 为 23 文件 / 约 2.8 MB：ESM 源、IIFE 产物、构建脚本、golden file、四套校验脚本、许可证） | 换取第三方逐字复核能力；页面运行时仍只需 1 个 HTML + 1 个 JS + 1 张分享图，且分享图对运行非必需 |
+| 17 | 3D 层用裸 `OrbitControls` 标识符（IIFE 改造时残留） | 改为 `THREE.OrbitControls`；降级标题按原因分类；新增 WebGL 可用路径的运行时冒烟测试作为第 9 项验收 | 手机微信真机首次打开暴露：降级视图生效但原因是 `Can't find variable: OrbitControls`，本该显示 3D。原 8 项验收只覆盖「WebGL 禁用」分支故漏检。见 §4.6 |
 
 ### 太阳与月球的辅助数值
 - 太阳直径 1 392 000 km、月球直径 3 475 km（由 Earth 12 756 km × Fact Sheet ratio 0.2724 推得）、月球恒星月 27.321661 d、地月距离取艺术化压缩值 —— **均为常用值／派生值，本会话未在线复核**，仅用于显示尺度，不参与位置计算。
@@ -314,7 +337,8 @@ node verify.mjs                  # 数值自检 + 本地独立星历 16 组误�
 node verify.mjs --online         # 可选：改与 JPL Horizons 对照；先预检，不通则明确报错并降级
 node verify.mjs --json           # 机器可读输出（comparison 段含 source/pass/rows）
 python3 verify_page.py           # 页面自检面板 ↔ 命令行 16 行逐位一致
-python3 verify_compat.py         # 兼容加固 8 项验收（含 WebGL 禁用端到端模拟）
+python3 verify_compat.py         # 兼容加固 9 项验收（含 WebGL 禁用降级 + WebGL 可用初始化两条路径）
+node build/verify_runtime.mjs    # 单独跑第 9 项：真实 THREE 下 3D 层初始化冒烟
 
 # 兼容加固的可复现构建
 python3 build/build_iife.py      # 由 vendor ESM 原件重新生成 vendor/three.iife.js
@@ -338,7 +362,7 @@ python3 verify_page.py
 - 所有参数集中在《太阳系八大行星动态运转.html》的 `CONFIG`；随机数用 `mulberry32` 固定种子 20261106；动画用 delta-time，不用帧计数。
 - `reference.json` 是 golden file：校验只读它，因此**运行校验不依赖 Python、ephem 包或网络**；生成器仅供第三方重新核算。
 - 页面分三段普通脚本：数值层（`window.SOLAR`）、降级层（`window.__SOLAR_FALLBACK__`，不依赖 THREE）、3D 层（IIFE + try/catch）。不加载 Three.js 也能显示 16 组误差表；WebGL 不可用时显示内联 SVG 静态视图，两者都由同一套 `stateOf()` 现场重算，可用 `verify_page.py` / `verify_compat.py` 复核。
-- 元验证：让一位未读过本对话的人，按 §6 命令重跑 `verify.mjs`、`verify_page.py`、`verify_compat.py`，应得到 §4 / §4.2 完全一致的数值表与 PASS 结论，并在模拟禁用 WebGL 时看到静态视图；再按构建命令重跑 `build_iife.py` / `make_preview.py`，应得到同一份 IIFE 产物与同一张预览图。
+- 元验证：让一位未读过本对话的人，按 §6 命令重跑 `verify.mjs`、`verify_page.py`、`verify_compat.py`，应得到 §4 / §4.2 完全一致的数值表与 PASS 结论，在模拟禁用 WebGL 时看到静态视图、在 WebGL 可用路径看到 3D 层完整启动；再按构建命令重跑 `build_iife.py` / `make_preview.py`，应得到同一份 IIFE 产物与同一张预览图。把主文件里的 `new THREE.OrbitControls(` 改回 `new OrbitControls(`，再跑 `build/verify_runtime.mjs` 必须以非零码失败（§4.6 负向验证）。
 
 ## 7. V1 §5 验收清单对照
 
@@ -351,4 +375,4 @@ python3 verify_page.py
 | 5 Stellarium / NASA Eyes 截图并排 | 未做（需人工第三方软件） |
 | 6 SOURCES.md + 已知取舍声明 | 本文件 |
 
-**结论：全部可由本机自动核验的部分（含第三方逐项误差表）已通过，不宣称「整体达标」的部分只剩三类** —— ① JPL 原页自带精度表原值未取得（改用实测误差，不编造）；② Stellarium / NASA Eyes 截图并排需人工；③ 真实手机微信／小红书内核的端到端渲染确认需人工打开线上链接（本地仅做了 DOM stub 模拟，见 §4.5）。此外 JPL Horizons 在线对照虽因网络阻断未执行，但已由更独立的 VSOP87 参照等价替代并公开声明，未静默掩盖。兼容加固与发布就绪包未改动任何物理或数值，16/16 PASS 与 0.1437° 结论保持一致。**GitHub Pages 发布已于 2026-11-07 完成，线上 12 个关键资源与本地发布包字节哈希逐一一致**（§4.5 ⑤）；发布前后物理与数值结论不变。
+**结论：全部可由本机自动核验的部分（含第三方逐项误差表）已通过，不宣称「整体达标」的部分只剩三类** —— ① JPL 原页自带精度表原值未取得（改用实测误差，不编造）；② Stellarium / NASA Eyes 截图并排需人工；③ 真实手机内核的端到端确认：微信真机已首次打开并暴露 §4.6 的兼容性缺陷（已在本机修复并补上回归测试），**修复版上线后的 3D 渲染、交互与分享卡片仍需人工复核**，小红书内核未测。此外 JPL Horizons 在线对照虽因网络阻断未执行，但已由更独立的 VSOP87 参照等价替代并公开声明，未静默掩盖。兼容加固、发布与 §4.6 修复均未改动任何物理或数值，16/16 PASS 与 0.1437° 结论保持一致。**GitHub Pages 发布已于 2026-11-07 完成，首次上线 12 个关键资源与本地发布包字节哈希逐一一致**（§4.5 ⑤）；§4.6 修复版的增量发布状态另记于工作日志。

@@ -32,6 +32,7 @@ FILES = [
     'README.md',
     'build/build_iife.py',
     'build/verify_bundle.mjs',
+    'build/verify_runtime.mjs',
     'build/make_preview.py',
     'build/set_pages_base.py',
     'build/make_publish.py',

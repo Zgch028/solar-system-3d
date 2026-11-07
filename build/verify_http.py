@@ -41,6 +41,7 @@ CASES = [
     ('/verify.mjs', 'verify.mjs', None),
     ('/verify_page.py', 'verify_page.py', None),
     ('/verify_compat.py', 'verify_compat.py', None),
+    ('/build/verify_runtime.mjs', 'build/verify_runtime.mjs', None),
     ('/SOURCES.md', 'SOURCES.md', None),
     ('/README.md', 'README.md', None),
     ('/.nojekyll', '.nojekyll', None),

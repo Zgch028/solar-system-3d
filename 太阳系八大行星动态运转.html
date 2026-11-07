@@ -130,10 +130,11 @@ window.__bootTimer=setTimeout(function(){
 <canvas id="scene"></canvas>
 <div id="labels"></div>
 
-<!-- WebGL 不可用时的静态降级视图：SVG 内容由下方独立普通脚本现场生成 -->
+<!-- 3D 不可用时的静态降级视图：SVG 内容由下方独立普通脚本现场生成。
+     标题不预设原因，由 render(reason) 按真实原因分类填写，避免把「代码异常」误报成「无 WebGL」。 -->
 <div id="fallback">
   <div class="panel">
-    <div class="h">静态降级视图 · 当前环境未启用 WebGL</div>
+    <div class="h" id="fb-title">静态降级视图</div>
     <div class="sub" id="fb-reason">—</div>
     <svg id="fb-svg" viewBox="0 0 900 520" role="img" aria-label="太阳系八大行星 J2000 时刻日心黄经静态示意图"></svg>
     <div class="sub" style="margin-top:8px">行星位置由本页 <code>window.SOLAR.stateOf()</code> 对 J2000 时刻现场计算：轨道半径按观赏比例 <code>R(a)</code>、行星位置按 <code>R(当前日距 r)</code> 映射。为静态示意，非 3D 渲染、非真实比例。</div>
@@ -491,6 +492,12 @@ function render(reason){
   document.body.classList.add('fb-on');
   var box=document.getElementById('fallback');if(box)box.style.display='block';
   var rs=document.getElementById('fb-reason');if(rs)rs.textContent='原因：'+reason;
+  // 标题按真实触发原因分类：WebGL 探测/上下文丢失属环境限制；其余（初始化异常、
+  // 渲染帧异常、bundle 缺失）属 3D 层兼容问题，不能笼统写成「未启用 WebGL」。
+  var ht=document.getElementById('fb-title');
+  if(ht)ht.textContent=/WebGL|上下文/.test(reason)
+    ? '静态降级视图 · WebGL 不可用'
+    : '静态降级视图 · 3D 渲染未能启动';
   var S=window.SOLAR,svg=document.getElementById('fb-svg');
   if(!S||!svg)return;
   var jd=S.CONFIG.J2000_JD,cx=450,cy=260,maxR=222;
@@ -641,7 +648,7 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(52,window.innerWidth/window.innerHeight,.05,6000);
 camera.position.set(0,120,205);
-const controls=new OrbitControls(camera,canvas);
+const controls=new THREE.OrbitControls(camera,canvas);
 controls.enableDamping=true;controls.dampingFactor=.07;controls.minDistance=6;controls.maxDistance=4000;
 
 scene.add(new THREE.AmbientLight(0x9DB3CC,.20));

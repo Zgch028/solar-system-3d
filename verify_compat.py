@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""兼容加固一键验收（v1.2）—— 面向朋友圈／小红书／GitHub Pages 发布。
+"""兼容加固一键验收（v1.3）—— 面向朋友圈／小红书／GitHub Pages 发布。
 
 判据（全部可证伪，失败即退出码非 0）：
   1. 主文件无 importmap / ESM / 运行时外链，所有相对资源实际存在；
@@ -10,8 +10,12 @@
   5. vendor/three.iife.js 通过 node --check 与 build/verify_bundle.mjs 导出完整性验收；
   6. 用 DOM stub 在 Node 里模拟「WebGL 被禁用」，端到端执行数值层 + 降级层 + 3D 层：
      必须切换静态视图、不白屏、SVG 含八大行星与太阳、16/16 PASS 仍可见，且 3D 层提前返回；
+     同时验证降级标题按原因分类（WebGL 限制 / 3D 层异常两类不混淆）；
   7. node verify.mjs --json 的 16 组第三方对照仍全部 PASS；
-  8. python3 verify_page.py 仍判定页面自检与命令行逐行一致。
+  8. python3 verify_page.py 仍判定页面自检与命令行逐行一致；
+  9. build/verify_runtime.mjs：在「WebGL 可用」路径加载真实 three.iife.js 并端到端
+     执行 3D 层初始化，断言未触发降级、WebGLRenderer / OrbitControls 各构造 1 次。
+     （v1.3 新增：手机微信真机暴露的裸标识符引用错误曾从第 6 项漏过。）
 
 用法：
   python3 verify_compat.py                 # 验收作品目录
@@ -40,7 +44,7 @@ def step(n, label, fn):
     global ok
     fn()
     ok += 1
-    print('  [%d/8] %s —— OK' % (n, label))
+    print('  [%d/9] %s —— OK' % (n, label))
 
 
 def read(p):
@@ -164,11 +168,18 @@ globalThis.document = {
 const realLog = console.log;
 console.log = () => {};
 for(const f of process.argv.slice(2)) new Function(fs.readFileSync(f,'utf8'))();
+const firstReason = el('fb-reason').textContent;
+const webglTitle = el('fb-title').textContent;
+// 再以「3D 层代码异常」为由触发一次，验证标题不会被误标成 WebGL 环境问题
+window.__FALLBACK__ = false;
+window.__SOLAR_FALLBACK__("3D 初始化异常：Can't find variable: OrbitControls");
+const codeTitle = el('fb-title').textContent;
 console.log = realLog;
 console.log(JSON.stringify({
   fallback:window.__FALLBACK__===true, booted:window.__BOOTED===true,
   mode3d:typeof window.__MODE3D__, svg:el('fb-svg').innerHTML,
-  verdict:el('fb-verdict').innerHTML, reason:el('fb-reason').textContent,
+  verdict:el('fb-verdict').innerHTML, reason:firstReason,
+  fbTitle:webglTitle, fbTitleCode:codeTitle,
   loaderrDisplay:el('loaderr').style.display,
   fallbackDisplay:el('fallback').style.display, classes:added
 }));
@@ -183,15 +194,21 @@ console.log(JSON.stringify({
     assert 'fb-on' in res['classes'], '未启用降级样式'
     assert res['fallbackDisplay'] == 'block' and res['loaderrDisplay'] == 'none'
     assert '模拟禁用 WebGL' in res['reason']
+    assert res['fbTitle'] == '静态降级视图 · WebGL 不可用', \
+        'WebGL 受限时标题分类错误：' + str(res['fbTitle'])
+    assert res['fbTitleCode'] == '静态降级视图 · 3D 渲染未能启动', \
+        '3D 层异常被误报为 WebGL 受限：' + str(res['fbTitleCode'])
     for n in ['水星', '金星', '地球', '火星', '木星', '土星', '天王星', '海王星', '太阳']:
         assert n in res['svg'], '降级 SVG 缺少 ' + n
     assert res['svg'].count('<circle') >= 17, '降级 SVG 轨道/天体数量异常'
     assert '16/16' in res['verdict'] and 'PASS' in res['verdict'], '降级页未保留独立星历结论'
     print('        降级模拟：3D 层提前返回；SVG %d 个圆；%s' %
           (res['svg'].count('<circle'), res['reason']))
+    print('        标题分类：环境限制 →「%s」；代码异常 →「%s」' %
+          (res['fbTitle'], res['fbTitleCode']))
 
 
-step(6, 'WebGL 禁用端到端模拟：静态视图 + 16/16 PASS 不白屏', c6)
+step(6, 'WebGL 禁用端到端模拟：静态视图 + 16/16 PASS 不白屏 + 标题按因分类', c6)
 
 
 def c7():
@@ -217,5 +234,19 @@ def c8():
 
 step(8, '页面自检面板与命令行逐行一致（含兼容结构检查）', c8)
 
-print('\n兼容加固验收：%d/8 全部通过 —— %s' % (ok, ROOT))
+
+def c9():
+    script = ROOT / 'build/verify_runtime.mjs'
+    assert script.exists(), '缺少 build/verify_runtime.mjs'
+    r = subprocess.run(['node', str(script), '--root', str(ROOT)],
+                       cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0 and '3D 初始化冒烟验收通过' in r.stdout, \
+        'WebGL 可用路径的 3D 初始化失败：\n' + r.stdout + r.stderr
+    for line in r.stdout.strip().splitlines():
+        print('        ' + line.strip())
+
+
+step(9, 'WebGL 可用路径冒烟：真实 THREE 下端到端初始化成功、不降级', c9)
+
+print('\n兼容加固验收：%d/9 全部通过 —— %s' % (ok, ROOT))
 print('说明：本脚本是静态 + DOM stub 验收，不能替代真实手机微信内核的端到端渲染确认。')

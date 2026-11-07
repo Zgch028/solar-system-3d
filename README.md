@@ -25,12 +25,15 @@
 
 ## 一键复核
 
+> 第 9 项验收来自 2026-11-07 手机微信真机反馈：原 8 项只模拟「WebGL 被禁用」，3D 层提前返回，漏掉了 `OrbitControls` 裸标识符引用错误。现补上「WebGL 可用」路径的运行时冒烟测试，详见 `SOURCES.md` §4.6。
+
 ```bash
 node verify.mjs                    # 数值自检 + 16 组独立星历误差表（零依赖、零网络）
 node verify.mjs --json             # 机器可读输出
 python3 verify_page.py             # 页面自检面板与命令行逐行比对
-python3 verify_compat.py           # 兼容加固 8 项验收（含 WebGL 禁用端到端模拟）
+python3 verify_compat.py           # 兼容加固 9 项验收（WebGL 禁用降级 + WebGL 可用初始化）
 python3 verify_compat.py --root publish   # 验收待发布目录
+node build/verify_runtime.mjs      # 单独跑第 9 项：真实 THREE 下 3D 层初始化冒烟
 
 # 可复现构建
 python3 build/build_iife.py        # 由 vendor ESM 源重新生成 vendor/three.iife.js
