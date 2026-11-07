@@ -1,0 +1,164 @@
+{
+  "meta": {
+    "generator": "reference_ephem.py",
+    "generatedAt": "2026-11-06T14:38:01+00:00",
+    "source": "PyEphem/VSOP87",
+    "ephemVersion": "4.2.1",
+    "theory": "PyEphem 4.2.1 (libastro / XEphem)，行星解析理论 VSOP87 截断实现；独立于 JPL DE 数值积分星历",
+    "install": "python3 -m pip install --only-binary :all: ephem==4.2.1",
+    "frame": "原始 hlong 为当日黄道/当日春分点；lonJ2000 = (lonDate - precessionDeg) mod 360",
+    "precession": "p_arcsec = 5028.796195*T + 1.1054348*T^2 + 0.00007964*T^3 - 0.000023857*T^4；T=(JD_TDB-2451545.0)/36525",
+    "timeScale": "TDB = UTC + 69.184 s（32.184 s + 37 闰秒常数近似）；两个时刻与本模型同一物理瞬间",
+    "knownLimits": "黄经岁差一阶近似，忽略黄道面旋转、章动与光行差；估计残差 < 0.01°",
+    "toleranceDeg": 1.0,
+    "note": "本文件是 golden file：verify.mjs 只读它，不依赖 Python 或网络；重跑本脚本可重新生成。"
+  },
+  "epochs": [
+    {
+      "label": "2000-01-01 12:00 TDB",
+      "utc": "2000/01/01 11:58:56.816",
+      "jdTDB": 2451545.0,
+      "T": 0.0,
+      "precessionDeg": 0.0,
+      "planets": [
+        {
+          "name": "水星",
+          "lonDate": 253.78300057,
+          "latDate": -3.02280224,
+          "lonJ2000": 253.78300057,
+          "rAU": 0.466471493,
+          "accessor": "Mercury.hlong / sun_distance"
+        },
+        {
+          "name": "金星",
+          "lonDate": 182.60293546,
+          "latDate": 3.2646093,
+          "lonJ2000": 182.60293546,
+          "rAU": 0.720212579,
+          "accessor": "Venus.hlong / sun_distance"
+        },
+        {
+          "name": "地球",
+          "lonDate": 100.37783974,
+          "latDate": -0.00024219,
+          "lonJ2000": 100.37783974,
+          "rAU": 0.983327806,
+          "accessor": "Sun.hlong / earth_distance（无 Earth 类）"
+        },
+        {
+          "name": "火星",
+          "lonDate": 359.44739307,
+          "latDate": -1.41965567,
+          "lonJ2000": 359.44739307,
+          "rAU": 1.391207695,
+          "accessor": "Mars.hlong / sun_distance"
+        },
+        {
+          "name": "木星",
+          "lonDate": 36.29463487,
+          "latDate": -1.17456831,
+          "lonJ2000": 36.29463487,
+          "rAU": 4.965381145,
+          "accessor": "Jupiter.hlong / sun_distance"
+        },
+        {
+          "name": "土星",
+          "lonDate": 45.72226985,
+          "latDate": -2.30319784,
+          "lonJ2000": 45.72226985,
+          "rAU": 9.18384552,
+          "accessor": "Saturn.hlong / sun_distance"
+        },
+        {
+          "name": "天王星",
+          "lonDate": 316.41870394,
+          "latDate": -0.68482849,
+          "lonJ2000": 316.41870394,
+          "rAU": 19.92404747,
+          "accessor": "Uranus.hlong / sun_distance"
+        },
+        {
+          "name": "海王星",
+          "lonDate": 303.92907467,
+          "latDate": 0.24201292,
+          "lonJ2000": 303.92907467,
+          "rAU": 30.120523453,
+          "accessor": "Neptune.hlong / sun_distance"
+        }
+      ]
+    },
+    {
+      "label": "2026-01-01 00:00 UTC",
+      "utc": "2026/01/01 00:00:00",
+      "jdTDB": 2461041.500800741,
+      "T": 0.260000022,
+      "precessionDeg": 0.363211625,
+      "planets": [
+        {
+          "name": "水星",
+          "lonDate": 242.62577728,
+          "latDate": -1.70108038,
+          "lonJ2000": 242.26256566,
+          "rAU": 0.462549627,
+          "accessor": "Mercury.hlong / sun_distance"
+        },
+        {
+          "name": "金星",
+          "lonDate": 277.38455533,
+          "latDate": -1.18855473,
+          "lonJ2000": 277.0213437,
+          "rAU": 0.727369547,
+          "accessor": "Venus.hlong / sun_distance"
+        },
+        {
+          "name": "地球",
+          "lonDate": 100.57293726,
+          "latDate": -0.00019835,
+          "lonJ2000": 100.20972564,
+          "rAU": 0.983326554,
+          "accessor": "Sun.hlong / earth_distance（无 Earth 类）"
+        },
+        {
+          "name": "火星",
+          "lonDate": 284.15988442,
+          "latDate": -1.50393957,
+          "lonJ2000": 283.79667279,
+          "rAU": 1.428693771,
+          "accessor": "Mars.hlong / sun_distance"
+        },
+        {
+          "name": "木星",
+          "lonDate": 109.3306468,
+          "latDate": 0.1946676,
+          "lonJ2000": 108.96743517,
+          "rAU": 5.211893559,
+          "accessor": "Jupiter.hlong / sun_distance"
+        },
+        {
+          "name": "土星",
+          "lonDate": 1.9163291,
+          "latDate": -2.30526163,
+          "lonJ2000": 1.55311748,
+          "rAU": 9.518541336,
+          "accessor": "Saturn.hlong / sun_distance"
+        },
+        {
+          "name": "天王星",
+          "lonDate": 59.90255536,
+          "latDate": -0.19014412,
+          "lonJ2000": 59.53934374,
+          "rAU": 19.490161896,
+          "accessor": "Uranus.hlong / sun_distance"
+        },
+        {
+          "name": "海王星",
+          "lonDate": 1.35893582,
+          "latDate": -1.34000051,
+          "lonJ2000": 0.9957242,
+          "rAU": 29.884757996,
+          "accessor": "Neptune.hlong / sun_distance"
+        }
+      ]
+    }
+  ]
+}

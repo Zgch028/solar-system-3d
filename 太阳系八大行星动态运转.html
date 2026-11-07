@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>太阳系八大行星动态运转 · 物理可核验 3D 模型</title>
+<style>
+:root{
+  --navy:#0B1B33; --navy2:#12294A; --teal:#2ED9C3; --teal-dim:rgba(46,217,195,.28);
+  --amber:#F5A623; --amber-dim:rgba(245,166,35,.30); --ink:#EAF2FA; --muted:#9DB3CC;
+  --panel:rgba(11,27,51,.86); --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#050B17;color:var(--ink);
+  font-family:"Microsoft YaHei","微软雅黑","PingFang SC","Helvetica Neue",sans-serif;font-size:13px}
+#scene{display:block;width:100%;height:100%;touch-action:none}
+.panel{position:absolute;background:var(--panel);border:1px solid var(--teal-dim);
+  border-radius:var(--radius);padding:10px 12px;backdrop-filter:blur(8px);line-height:1.55}
+.h{font-size:13px;font-weight:500;color:var(--teal);margin:0 0 6px;letter-spacing:.4px}
+.sub{font-size:11px;color:var(--muted);font-weight:400}
+#topbar{top:12px;left:12px;max-width:330px}
+#topbar .badge{display:inline-block;margin-top:6px;padding:2px 8px;border:1px solid var(--amber-dim);
+  border-radius:20px;color:var(--amber);font-size:11px}
+#timebar{top:12px;left:50%;transform:translateX(-50%);min-width:370px;text-align:center}
+#simdate{font-size:15px;color:var(--amber);font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.row{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:8px}
+button,select,input{font-family:inherit;font-size:12px;color:var(--ink);background:var(--navy2);
+  border:1px solid var(--teal-dim);border-radius:8px;padding:5px 9px;outline:none}
+button{cursor:pointer}
+button:hover{border-color:var(--teal);color:var(--teal)}
+button.on{background:rgba(46,217,195,.16);color:var(--teal);border-color:var(--teal)}
+input[type=datetime-local]{width:190px}
+label{font-size:11px;color:var(--muted)}
+#controls{top:12px;right:12px;width:210px}
+#controls .row{justify-content:flex-start;margin-top:6px}
+#legend{bottom:12px;left:12px;max-width:410px;font-size:11px}
+#legend code{font-family:Consolas,"Courier New",monospace;color:var(--amber);font-size:11px}
+#selftest{bottom:12px;right:12px;width:468px;max-height:62vh;overflow:auto;font-size:11px}
+#selftest table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+#selftest th,#selftest td{border-bottom:1px solid rgba(157,179,204,.16);padding:3px 5px;text-align:right;white-space:nowrap}
+#selftest .cmp th,#selftest .cmp td{padding:2px 4px;font-size:10.5px}
+.verdict{padding:6px 8px;border:1px solid var(--teal-dim);border-radius:8px;background:rgba(46,217,195,.08);line-height:1.6}
+.verdict b{color:var(--teal);font-size:12px}
+#selftest details{margin:6px 0}
+#selftest summary{cursor:pointer;color:var(--teal);padding:3px 0}
+#selftest th{color:var(--teal);font-weight:500}
+#selftest td:first-child,#selftest th:first-child{text-align:left}
+.pass{color:var(--teal)} .fail{color:#FF7B72} .warn{color:var(--amber)}
+#infocard{top:150px;right:12px;width:210px;display:none}
+#infocard .k{color:var(--muted)} #infocard .v{float:right;color:var(--ink)}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-140%);font-size:11px;color:var(--ink);
+  background:rgba(11,27,51,.72);border:1px solid var(--teal-dim);border-radius:6px;
+  padding:1px 6px;white-space:nowrap}
+#loaderr{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:460px;max-width:90vw;text-align:center;padding:20px;border-radius:var(--radius);
+  background:var(--panel);border:1px solid var(--amber-dim);color:var(--ink);line-height:1.8}
+@media (max-width:900px){
+  #topbar{max-width:200px} #timebar{top:auto;bottom:12px;left:12px;transform:none;min-width:0;width:calc(100% - 24px)}
+  #controls{width:170px} #legend,#selftest{display:none} #infocard{top:150px;width:170px}
+}
+/* WebGL 降级：静态 SVG 视图 + 数值自检照常可用（放在 media 之后以覆盖移动端隐藏规则） */
+#fallback{display:none;position:relative;padding:12px;z-index:2}
+#fallback .panel{position:relative;top:auto;left:auto;right:auto;bottom:auto;width:min(94vw,960px);margin:0 auto}
+#fallback svg{display:block;width:100%;height:auto;border-radius:8px;
+  background:radial-gradient(circle at 50% 50%,#12294A 0%,#050B17 72%)}
+body.fb-on{overflow:auto}
+body.fb-on #scene,body.fb-on #labels,body.fb-on #timebar,body.fb-on #controls,
+body.fb-on #legend,body.fb-on #infocard{display:none !important}
+body.fb-on #topbar{position:relative;top:auto;left:auto;margin:12px 12px 0;max-width:none}
+body.fb-on #selftest{display:block !important;position:relative;bottom:auto;right:auto;
+  width:min(94vw,760px);max-height:none;margin:12px auto 20px}
+body.fb-on #fallback{display:block}
+</style>
+<!-- 兼容加固 v1.2（面向微信／小红书／GitHub Pages 分享）
+     1) Three.js r160 与 OrbitControls 已由 build/build_iife.py 打成 vendor/three.iife.js，
+        暴露全局 window.THREE；页面只用普通 <script>，无 importmap、无 ESM、无运行时外网请求。
+        因此 file:// 双击可开，也可用任意静态服务；不再要求浏览器支持 importmap。
+     2) 3D 层加载前探测 WebGL；不可用或初始化／首帧异常时，由独立普通脚本用
+        window.SOLAR.stateOf() 现场计算并渲染内联 SVG 静态视图，不白屏。
+     3) og:* / twitter:card 供分享卡片抓取；og:image 仅由平台爬虫在服务端读取，
+        页面运行时不会请求该地址。数值自检与降级视图均与 3D 层解耦。
+     站点基址若变更，用 build/set_pages_base.py 批量替换下面两个绝对 URL。 -->
+<meta name="description" content="基于 JPL Standish 近似根数与开普勒椭圆的交互式太阳系模型；内置 16 组独立星历（PyEphem/VSOP87）对照全部 PASS，最大 |Δ黄经| 0.1437° < 1°。双尺度显式声明，AI 辅助创作已标注。">
+<meta name="theme-color" content="#0B1B33">
+<meta name="format-detection" content="telephone=no">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="太阳系八大行星动态运转">
+<meta property="og:title" content="太阳系八大行星动态运转 · 物理可核验 3D 模型">
+<meta property="og:description" content="JPL 近似根数 + 开普勒椭圆；16 组独立星历（PyEphem/VSOP87）对照全部 PASS，最大 |Δ黄经| 0.1437°。程序化纹理、尺度显式声明、无需外网。AI 辅助创作。">
+<meta property="og:url" content="https://Zgch028.github.io/solar-system-3d/">
+<meta property="og:image" content="https://Zgch028.github.io/solar-system-3d/assets/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="太阳系八大行星 J2000 时刻日心黄经静态示意图">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="太阳系八大行星动态运转 · 物理可核验 3D 模型">
+<meta name="twitter:description" content="16 组独立星历对照全部 PASS；无需外网、可双击打开的交互式太阳系模型。">
+<meta name="twitter:image" content="https://Zgch028.github.io/solar-system-3d/assets/preview.png">
+<link rel="canonical" href="https://Zgch028.github.io/solar-system-3d/">
+<script>
+/* WebGL 能力探测：必须在 3D 层之前完成；探测用的临时上下文立即释放。 */
+(function(){
+  var r={ok:false,reason:'',renderer:''};
+  try{
+    var c=document.createElement('canvas');
+    var gl=c.getContext('webgl2')||c.getContext('webgl')||c.getContext('experimental-webgl');
+    if(gl){
+      r.ok=true;
+      try{r.renderer=String(gl.getParameter(gl.VERSION)||'WebGL');}catch(e){r.renderer='WebGL';}
+      try{
+        var ext=gl.getExtension('WEBGL_debug_renderer_info');
+        if(ext)r.renderer+=' / '+String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL));
+      }catch(e){}
+      try{var lose=gl.getExtension('WEBGL_lose_context');if(lose)lose.loseContext();}catch(e){}
+    }else{
+      r.reason='浏览器未提供 WebGL 上下文（可能被系统、浏览器或微信内核策略禁用）';
+    }
+  }catch(e){r.reason='WebGL 探测异常：'+(e&&e.message?e.message:String(e));}
+  window.__WEBGL__=r;
+})();
+window.__bootTimer=setTimeout(function(){
+  if(!window.__BOOTED&&!window.__FALLBACK__){
+    var e=document.getElementById('loaderr');if(e)e.style.display='block';
+  }
+},12000);
+</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="labels"></div>
+
+<!-- WebGL 不可用时的静态降级视图：SVG 内容由下方独立普通脚本现场生成 -->
+<div id="fallback">
+  <div class="panel">
+    <div class="h">静态降级视图 · 当前环境未启用 WebGL</div>
+    <div class="sub" id="fb-reason">—</div>
+    <svg id="fb-svg" viewBox="0 0 900 520" role="img" aria-label="太阳系八大行星 J2000 时刻日心黄经静态示意图"></svg>
+    <div class="sub" style="margin-top:8px">行星位置由本页 <code>window.SOLAR.stateOf()</code> 对 J2000 时刻现场计算：轨道半径按观赏比例 <code>R(a)</code>、行星位置按 <code>R(当前日距 r)</code> 映射。为静态示意，非 3D 渲染、非真实比例。</div>
+    <div class="sub" id="fb-verdict" style="margin-top:6px"></div>
+    <div class="sub" style="margin-top:6px">右下／下方「内置数值自检」含 16 组第三方星历误差表，由独立普通脚本现场重算，不受 WebGL 影响；也可用 <code>node verify.mjs</code> 复核。</div>
+  </div>
+</div>
+
+<div class="panel" id="topbar">
+  <div class="h">太阳系八大行星动态运转</div>
+  <div class="sub">JPL 近似根数 · 开普勒椭圆 · 独立计时自转</div>
+  <div class="sub" style="margin-top:4px">Three.js 本地 vendor · 无需外网</div>
+  <div class="badge">教学／科普级 · 物理可核验</div>
+  <div class="badge" style="margin-left:6px">AI 辅助创作（已标注）</div>
+  <div class="sub" style="margin-top:6px">禁止宣称「完全按比例」；当前尺度见左下角图例</div>
+</div>
+
+<div class="panel" id="timebar">
+  <div id="simdate">—</div>
+  <div class="row">
+    <button id="play">暂停</button>
+    <label>倍率</label>
+    <select id="speed">
+      <option value="0.1">0.1 天/秒</option><option value="1">1 天/秒</option>
+      <option value="2" selected>2 天/秒</option><option value="10">10 天/秒</option>
+      <option value="100">100 天/秒</option><option value="365">365 天/秒</option>
+    </select>
+    <button id="j2000">回到 J2000</button>
+  </div>
+  <div class="row">
+    <input type="datetime-local" id="dateInput" step="60">
+    <button id="jump">跳转（UTC）</button>
+  </div>
+</div>
+
+<div class="panel" id="controls">
+  <div class="h">显示与相机</div>
+  <div class="row"><button id="scale" class="on">观赏比例</button></div>
+  <div class="row"><button id="orbits" class="on">轨道线</button><button id="labelBtn" class="on">标签</button></div>
+  <div class="row"><button id="gridBtn">黄道网格</button></div>
+  <div class="row"><label>跟随</label>
+    <select id="follow"><option value="">无（俯瞰）</option></select>
+  </div>
+  <div class="sub" style="margin-top:8px">拖拽旋转 · 滚轮缩放 · 点击行星看信息卡</div>
+</div>
+
+<div class="panel" id="legend">
+  <div class="h">尺度策略（必须显式声明）</div>
+  <div>轨道距离：<code>R(a) = 10 + 55·log10(1 + a/0.15)</code> 单位，a 为 AU；每颗轨道按 <code>R(a)/a</code> 等比例缩放，<b>偏心率与倾角完整保留</b>。</div>
+  <div>天体半径：<code>r(D) = 0.55 + 3.2·(D/70000)^0.42</code> 单位，D 为直径 km。</div>
+  <div>真实比例：<code>60 单位/AU</code>，距离与半径同一尺度；此时地球直径不足 1 像素，行星退化为标记点 + 标签（预期行为）。</div>
+  <div class="sub" style="margin-top:4px">纹理与星空为程序化生成、固定种子 20261106，<b>非真实影像／非真实星表</b>。</div>
+</div>
+
+<div class="panel" id="selftest"><div class="h">内置数值自检</div><div id="stbody">运行中…</div></div>
+<div class="panel" id="infocard"></div>
+<div id="loaderr"><b>3D 场景未能加载</b><br>本页已内置 Three.js r160 与 OrbitControls 的 IIFE 全局包 <code>vendor/three.iife.js</code>，不依赖 importmap、ESM 或外网；<b>双击 <code>file://</code> 打开或经任意静态服务访问均可</b>。<br>若长时间停留在此提示，请检查 <code>vendor/three.iife.js</code> 是否齐全、浏览器是否允许本地脚本执行。<br><b>静态降级视图与「内置数值自检」（含 16 组第三方星历误差表）由独立普通脚本运行，不依赖 3D 与网络，仍可查看</b>；也可运行 <code>node verify.mjs</code> 得到同一张表。</div>
+
+<script>
+/* ==========================================================================
+   纯数值层 + 内置自检面板 —— 普通脚本，不依赖 Three.js / 网络
+   3D 场景与自检共用同一套 CONFIG / TABLES / stateOf()；即使 3D 加载失败，
+   16 组第三方星历误差表仍由本脚本现场重算并显示。
+   ========================================================================== */
+(function(){
+"use strict";
+/* ==========================================================================
+   0. CONFIG —— 所有参数集中于此；随机数固定种子；结果可复现
+   ========================================================================== */
+const CONFIG = Object.freeze({
+  AU_KM: 149597870.7,
+  J2000_JD: 2451545.0,
+  TT_MINUS_TAI_S: 32.184,
+  LEAP_SECONDS_UTC_TAI: 37,       // 2017-01-01 起至 2026 未新增闰秒
+  ELEMENT_SET: '1800-2050',
+  SEED: 20261106,
+  START_UTC: '2026-01-01T00:00:00Z',
+  DAYS_PER_SECOND: 2,
+  DPR_MAX: 1.75,
+  STAR_COUNT: 2600,
+  ORBIT_SAMPLES: 360,
+  KEP_TOL_DEG: 1e-6,
+  KEP_MAX_ITER: 100,
+  VIEW: Object.freeze({
+    orbitBase: 10, orbitK: 55, orbitRef: 0.15,
+    radiusBase: 0.55, radiusK: 3.2, radiusRef: 70000, radiusPow: 0.42,
+    trueUnitsPerAU: 60, markerSize: 1.4
+  })
+});
+
+/* ==========================================================================
+   1. 一手数据（逐项来源见 SOURCES.md）
+   --------------------------------------------------------------------------
+   E. M. Standish, "Keplerian Elements for Approximate Positions of the Major
+   Planets", JPL Solar System Dynamics, ssd.jpl.nasa.gov/planets/approx_pos.html
+   列：name, a0, e0, I0, L0, W0(ϖ), O0(Ω), at, et, It, Lt, Wt, Ot, b, c, s, f
+   单位：a[AU], e[-], 角度[deg]，变率为每儒略世纪；b/c/s/f 为 M 的附加项。
+   ========================================================================== */
+const TABLES = {
+  '1800-2050': [
+    ['Mercury',0.38709927,0.20563593,7.00497902,252.25032350,77.45779628,48.33076593,0.00000037,0.00001906,-0.00594749,149472.67411175,0.16047689,-0.12534081,0,0,0,0],
+    ['Venus',  0.72333566,0.00677672,3.39467605,181.97909950,131.60246718,76.67984255,0.00000390,-0.00004107,-0.00078890,58517.81538729,0.00268329,-0.27769418,0,0,0,0],
+    ['Earth',  1.00000261,0.01671123,-0.00001531,100.46457166,102.93768193,0.0,0.00000562,-0.00004392,-0.01294668,35999.37244981,0.32327364,0.0,0,0,0,0],
+    ['Mars',   1.52371034,0.09339410,1.84969142,-4.55343205,-23.94362959,49.55953891,0.00001847,-0.00007882,-0.00813131,19140.30268499,0.44441088,-0.29257343,0,0,0,0],
+    ['Jupiter',5.20288700,0.04838624,1.30439695,34.39644051,14.72847983,100.47390909,-0.00011607,-0.00013253,-0.00183714,3034.74612775,0.21252668,0.20469106,0,0,0,0],
+    ['Saturn', 9.53667594,0.05386179,2.48599187,49.95424423,92.59887831,113.66242448,-0.00125060,-0.00050991,0.00193609,1222.49362201,-0.41897216,-0.28867794,0,0,0,0],
+    ['Uranus',19.18916464,0.04725744,0.77263783,313.23810451,170.95427630,74.01692503,-0.00196176,-0.00004397,-0.00242939,428.48202785,0.40805281,0.04240589,0,0,0,0],
+    ['Neptune',30.06992276,0.00859048,1.77004347,-55.12002969,44.96476227,131.78422574,0.00026291,0.00005105,0.00035372,218.45945325,-0.32241464,-0.00508664,0,0,0,0]
+  ],
+  '3000BC-3000AD': [
+    ['Mercury',0.38709843,0.20563661,7.00559432,252.25166724,77.45771895,48.33961819,0,0.00002123,-0.00590158,149472.67486623,0.15940013,-0.12214182,0,0,0,0],
+    ['Venus',  0.72332102,0.00676399,3.39777545,181.97970850,131.76755713,76.67261496,-0.00000026,-0.00005107,0.00043494,58517.81560260,0.05679648,-0.27274174,0,0,0,0],
+    ['Earth',  1.00000018,0.01673163,-0.00054346,100.46691572,102.93005885,-5.11260389,-0.00000003,-0.00003661,-0.01337178,35999.37306329,0.31795260,-0.24123856,0,0,0,0],
+    ['Mars',   1.52371243,0.09336511,1.85181869,-4.56813164,-23.91744784,49.71320984,0.00000097,0.00009149,-0.00724757,19140.29934243,0.45223625,-0.26852431,0,0,0,0],
+    ['Jupiter',5.20248019,0.04853590,1.29861416,34.33479152,14.27495244,100.29282654,-0.00002864,0.00018026,-0.00322699,3034.90371757,0.18199196,0.13024619,-0.00012452,0.06064060,-0.35635438,38.35125000],
+    ['Saturn', 9.54149883,0.05550825,2.49424102,50.07571329,92.86136063,113.63998702,-0.00003065,-0.00032044,0.00451969,1222.11494724,0.54179478,-0.25015002,0.00025899,-0.13434469,0.87320147,38.35125000],
+    ['Uranus',19.18797948,0.04685740,0.77298127,314.20276625,172.43404441,73.96250215,-0.00020455,-0.00001550,-0.00180155,428.49512595,0.09266985,0.05739699,0.00058331,-0.97731848,0.17689245,7.67025000],
+    ['Neptune',30.06952752,0.00895439,1.77005520,304.22289287,46.68158724,131.78635853,0.00006447,0.00000818,0.00022400,218.46515314,0.01009938,-0.00606302,-0.00041348,0.68346318,-0.10162547,7.67025000]
+  ]
+};
+const ELEMENTS = TABLES[CONFIG.ELEMENT_SET];
+
+/* 物理参数：NASA/NSSDCA Planetary Fact Sheet - Metric（2025-03-18 更新）
+   D=Diameter(km)；rot=Rotation Period(h)，负号=逆行；obl=Obliquity to Orbit(deg)。
+   注意：逆行由 >90° 轴倾表达，自转速率用 |rot|，避免与负号重复计入。 */
+const BODIES = [
+  {name:'水星', en:'Mercury', D:4879,   rot:1407.6,  obl:0.034,  P:88.0,   color:0xA9A29B, bands:5,  seed:11},
+  {name:'金星', en:'Venus',   D:12104,  rot:-5832.5, obl:177.4,  P:224.7,  color:0xE8C98A, bands:8,  seed:23},
+  {name:'地球', en:'Earth',   D:12756,  rot:23.9,    obl:23.4,   P:365.2,  color:0x3D7FD1, bands:3,  seed:37, moon:true},
+  {name:'火星', en:'Mars',    D:6792,   rot:24.6,    obl:25.2,   P:687.0,  color:0xC1613C, bands:6,  seed:41},
+  {name:'木星', en:'Jupiter', D:142984, rot:9.9,     obl:3.1,    P:4331,   color:0xD9B48C, bands:12, seed:53},
+  {name:'土星', en:'Saturn',  D:120536, rot:10.7,    obl:26.7,   P:10747,  color:0xE2CE9A, bands:10, seed:67, ring:true},
+  {name:'天王星',en:'Uranus', D:51118,  rot:-17.2,   obl:97.8,   P:30589,  color:0x8FD3DE, bands:4,  seed:71, ring:true},
+  {name:'海王星',en:'Neptune',D:49528,  rot:16.1,    obl:28.3,   P:59800,  color:0x3F63C8, bands:5,  seed:83}
+];
+const SUN = {name:'太阳', D:1392000, color:0xFFB84D};
+
+/* ==========================================================================
+   2. 时间与轨道数学（与 verify.mjs 逐式一致）
+   ========================================================================== */
+const D2R=Math.PI/180, R2D=180/Math.PI;
+function jdUTC(ms){ return ms/86400000 + 2440587.5; }
+function jdTDB(ms){ return jdUTC(ms) + (CONFIG.TT_MINUS_TAI_S+CONFIG.LEAP_SECONDS_UTC_TAI)/86400; }
+function elementsAt(row,T){
+  const [,a0,e0,I0,L0,W0,O0,at,et,It,Lt,Wt,Ot,b,c,s,f]=row;
+  return {a:a0+at*T,e:e0+et*T,I:I0+It*T,L:L0+Lt*T,W:W0+Wt*T,O:O0+Ot*T,b,c,s,f};
+}
+function solveKepler(Mdeg,e,extra){
+  const estar=R2D*e;
+  let E=Mdeg+estar*Math.sin(Mdeg*D2R), iter=0, last=Infinity;
+  for(;iter<CONFIG.KEP_MAX_ITER;iter++){
+    const dM=Mdeg-(E-estar*Math.sin(E*D2R));
+    const dE=dM/(1-e*Math.cos(E*D2R));
+    E+=dE; last=Math.abs(dE);
+    if(last<=CONFIG.KEP_TOL_DEG) break;
+  }
+  if(extra) extra.iter=iter+1, extra.residual=last;
+  return E;
+}
+function trueAnomaly(Edeg,e){
+  const t=Math.tan(Edeg*D2R/2)*Math.sqrt((1+e)/(1-e));
+  const nu=2*Math.atan(t)*R2D;
+  return ((nu%360)+360)%360;
+}
+function angDiff(a,b){let d=Math.abs(a-b)%360;return d>180?360-d:d;}
+function eclFromE(Edeg,el){
+  const w=el.W-el.O, a=el.a, e=el.e;
+  const x1=a*(Math.cos(Edeg*D2R)-e);
+  const y1=a*Math.sqrt(1-e*e)*Math.sin(Edeg*D2R);
+  const cw=Math.cos(w*D2R),sw=Math.sin(w*D2R),cO=Math.cos(el.O*D2R),sO=Math.sin(el.O*D2R);
+  const cI=Math.cos(el.I*D2R),sI=Math.sin(el.I*D2R);
+  const X=(cw*cO-sw*sO*cI)*x1+(-sw*cO-cw*sO*cI)*y1;
+  const Y=(cw*sO+sw*cO*cI)*x1+(-sw*sO+cw*cO*cI)*y1;
+  const Z=(sw*sI)*x1+(cw*sI)*y1;
+  return {X,Y,Z};
+}
+function stateOf(i,jd){
+  const T=(jd-CONFIG.J2000_JD)/36525;
+  const el=elementsAt(ELEMENTS[i],T);
+  let M=el.L-el.W+el.b*T*T+el.c*Math.cos(el.f*T*D2R)+el.s*Math.sin(el.f*T*D2R);
+  M=((M+180)%360+360)%360-180;
+  const iter={}; const E=solveKepler(M,el.e,iter);
+  const p=eclFromE(E,el);
+  const r=Math.hypot(p.X,p.Y,p.Z);
+  const lon=((Math.atan2(p.Y,p.X)*R2D)%360+360)%360;
+  return {p,el,M,E,T,r,lon,iter};
+}
+function orbitRadius(a){return CONFIG.VIEW.orbitBase+CONFIG.VIEW.orbitK*Math.log10(1+a/CONFIG.VIEW.orbitRef);}
+function bodyRadius(D){return CONFIG.VIEW.radiusBase+CONFIG.VIEW.radiusK*Math.pow(D/CONFIG.VIEW.radiusRef,CONFIG.VIEW.radiusPow);}
+function orbitScale(mode,a){return mode==='true'?CONFIG.VIEW.trueUnitsPerAU:orbitRadius(a)/a;}
+function bodyScale(mode,D){return mode==='true'?(D/2)/CONFIG.AU_KM*CONFIG.VIEW.trueUnitsPerAU:bodyRadius(D);}
+
+
+/* ==========================================================================
+   7. 内置数值自检面板（与 verify.mjs 同一套公式、同一份 golden file）
+   —— 普通脚本执行，不依赖 Three.js / CDN；误差由 stateOf() 现场重算，非静态贴表
+   ========================================================================== */
+function heliocentricLon(i,jd){const s=stateOf(i,jd);return {lon:s.lon,r:s.r};}
+
+/* ---REF-BEGIN--- 由 reference_ephem.py / reference.json 自动生成，数值勿手改 --- */
+const REFERENCE = Object.freeze({
+  source: "PyEphem/VSOP87", version: "4.2.1", toleranceDeg: 1.0, generatedAt: "2026-11-06T14:38:01+00:00",
+  frame: "原始 hlong 为当日黄道/当日春分点；lonJ2000 = (lonDate - precessionDeg) mod 360",
+  epochs:[
+      {label:"2000-01-01 12:00 TDB",jdTDB:2451545.0,precessionDeg:0.0,planets:[
+        {n:"水星",lonDate:253.78300057,lonJ2000:253.78300057,rAU:0.466471493},
+        {n:"金星",lonDate:182.60293546,lonJ2000:182.60293546,rAU:0.720212579},
+        {n:"地球",lonDate:100.37783974,lonJ2000:100.37783974,rAU:0.983327806},
+        {n:"火星",lonDate:359.44739307,lonJ2000:359.44739307,rAU:1.391207695},
+        {n:"木星",lonDate:36.29463487,lonJ2000:36.29463487,rAU:4.965381145},
+        {n:"土星",lonDate:45.72226985,lonJ2000:45.72226985,rAU:9.18384552},
+        {n:"天王星",lonDate:316.41870394,lonJ2000:316.41870394,rAU:19.92404747},
+        {n:"海王星",lonDate:303.92907467,lonJ2000:303.92907467,rAU:30.120523453}
+      ]},
+      {label:"2026-01-01 00:00 UTC",jdTDB:2461041.500800741,precessionDeg:0.363211625,planets:[
+        {n:"水星",lonDate:242.62577728,lonJ2000:242.26256566,rAU:0.462549627},
+        {n:"金星",lonDate:277.38455533,lonJ2000:277.0213437,rAU:0.727369547},
+        {n:"地球",lonDate:100.57293726,lonJ2000:100.20972564,rAU:0.983326554},
+        {n:"火星",lonDate:284.15988442,lonJ2000:283.79667279,rAU:1.428693771},
+        {n:"木星",lonDate:109.3306468,lonJ2000:108.96743517,rAU:5.211893559},
+        {n:"土星",lonDate:1.9163291,lonJ2000:1.55311748,rAU:9.518541336},
+        {n:"天王星",lonDate:59.90255536,lonJ2000:59.53934374,rAU:19.490161896},
+        {n:"海王星",lonDate:1.35893582,lonJ2000:0.9957242,rAU:29.884757996}
+      ]}
+  ]
+});
+/* ---REF-END--- */
+
+const CMP_JDS=[CONFIG.J2000_JD, jdTDB(Date.parse('2026-01-01T00:00:00Z'))];
+
+/* ---CMP-BEGIN--- */
+function comparisonTable(){
+  const rows=[],timeAlign=[];
+  REFERENCE.epochs.forEach((ep,k)=>{
+    const dJd=Math.abs(CMP_JDS[k]-ep.jdTDB);
+    timeAlign.push({label:ep.label,deltaJd:dJd,pass:dJd<1e-4});
+    ep.planets.forEach((r,i)=>{
+      const mine=heliocentricLon(i,CMP_JDS[k]);
+      const dLon=angDiff(mine.lon,r.lonJ2000);
+      const dLonRaw=angDiff(mine.lon,r.lonDate);      // 未扣岁差，用于参考系对齐自检
+      const dR=Math.abs(mine.r-r.rAU);
+      rows.push({epoch:ep.label,planet:r.n,mineLon:mine.lon,refLon:r.lonJ2000,
+        dLon,dLonRaw,dR,pass:dLon<REFERENCE.toleranceDeg});
+    });
+  });
+  return {rows,timeAlign,maxDLon:Math.max(...rows.map(r=>r.dLon)),
+    count:rows.filter(r=>r.pass).length,
+    pass:rows.length===16&&rows.every(r=>r.pass)&&timeAlign.every(t=>t.pass)};
+}
+/* ---CMP-END--- */
+
+function cmpDetailHTML(cmp){
+  let h='';
+  REFERENCE.epochs.forEach((ep,k)=>{
+    const sub=cmp.rows.slice(k*8,k*8+8);
+    const rawAvg=sub.reduce((s,r)=>s+r.dLonRaw,0)/sub.length;
+    const fixAvg=sub.reduce((s,r)=>s+r.dLon,0)/sub.length;
+    const al=cmp.timeAlign[k];
+    h+='<div class="sub" style="margin-top:6px"><b>'+ep.label+'</b> · 岁差 p = '+
+       ep.precessionDeg.toFixed(6)+'° · 时标 ΔJD = '+al.deltaJd.toExponential(1)+
+       ' <span class="'+(al.pass?'pass':'fail')+'">'+(al.pass?'对齐':'不一致')+'</span></div>';
+    h+='<table class="cmp"><tr><th>行星</th><th>本模型°</th><th>参照°</th><th>|Δ经|°</th><th>|Δr|AU</th><th>判定</th></tr>';
+    sub.forEach(r=>{
+      h+='<tr><td>'+r.planet+'</td><td>'+r.mineLon.toFixed(4)+'</td><td>'+r.refLon.toFixed(4)+
+         '</td><td>'+r.dLon.toFixed(4)+'</td><td>'+r.dR.toFixed(6)+
+         '</td><td class="'+(r.pass?'pass':'fail')+'">'+(r.pass?'PASS':'FAIL')+'</td></tr>';
+    });
+    h+='</table>';
+    if(ep.precessionDeg>0)
+      h+='<div class="sub">参考系对齐证据：未扣岁差时平均 |Δ经| = '+rawAvg.toFixed(4)+
+         '° → 扣除 p 后 '+fixAvg.toFixed(4)+'°（本页现场计算）</div>';
+  });
+  return h;
+}
+
+function selfTest(){
+  const t0=CONFIG.J2000_JD;                          // 2000-01-01 12:00 TDB
+  const t1=jdTDB(Date.parse('2026-01-01T00:00:00Z'));
+  const rows=[];
+  for(let i=0;i<8;i++){
+    const a=heliocentricLon(i,t0),b=heliocentricLon(i,t1);
+    rows.push([BODIES[i].name,a.lon.toFixed(4),a.r.toFixed(5),b.lon.toFixed(4),b.r.toFixed(5)]);
+  }
+  // 周期取 NASA Fact Sheet 独立值，不由 a 反算，否则 T²/a³ 恒等于 1 属自证
+  const k3=[];
+  for(let i=0;i<8;i++){
+    const el=elementsAt(ELEMENTS[i],0);
+    const T=BODIES[i].P/365.256363;
+    const ratio=T*T/(el.a*el.a*el.a);
+    k3.push([BODIES[i].name,el.a.toFixed(5),T.toFixed(5),ratio.toFixed(6)]);
+  }
+  const k3max=Math.max(...k3.map(r=>Math.abs(parseFloat(r[3])-1)));
+  const area=[];
+  for(const idx of [0,3]){
+    const el=elementsAt(ELEMENTS[idx],0);
+    const nu=M=>trueAnomaly(solveKepler(M,el.e),el.e);
+    const dPeri=angDiff(nu(1),nu(0)),dAph=angDiff(nu(181),nu(180));
+    area.push([BODIES[idx].name,dPeri.toFixed(5),dAph.toFixed(5),dPeri>dAph]);
+  }
+  const spin=BODIES.map(b=>[b.name,b.rot,b.obl,(b.rot<0||b.obl>90)]);
+  const cmp=comparisonTable();
+
+  let html='<div class="verdict"><b>⑤ 独立第三方星历对照：'+cmp.count+'/16 '+
+    (cmp.pass?'PASS':'FAIL')+'</b><br><span class="sub">判卷人 '+REFERENCE.source+
+    ' v'+REFERENCE.version+'（VSOP87 解析理论，与 JPL DE 数值积分不同理论／数据源／实现）；最大 |Δ黄经| '+
+    cmp.maxDLon.toFixed(4)+'° &lt; 阈值 '+REFERENCE.toleranceDeg+
+    '°。表中数值由本页用同一套 stateOf() 现场重算，非静态贴表。</span></div>';
+  html+='<details open><summary>16 组误差表明细（展开／收起）</summary>'+cmpDetailHTML(cmp)+'</details>';
+  html+='<div class="sub" style="margin-top:8px">根数集 '+CONFIG.ELEMENT_SET+
+    ' · 两个检验时刻：2000-01-01 12:00 TDB / 2026-01-01 00:00 UTC</div>';
+  html+='<table><tr><th>行星</th><th>2000 黄经°</th><th>日距 AU</th><th>2026 黄经°</th><th>日距 AU</th></tr>';
+  rows.forEach(r=>html+='<tr><td>'+r.join('</td><td>')+'</td></tr>');
+  html+='</table><div style="margin-top:6px"><b>① 开普勒第三定律</b> T²/a³（T 取独立来源周期）：最大偏差 <span class="'+
+    (k3max<0.02?'pass':'fail')+'">'+k3max.toFixed(6)+'</span> '+(k3max<0.02?'PASS':'FAIL')+'（阈值 0.02）</div>';
+  html+='<table><tr><th>行星</th><th>a</th><th>T(年)</th><th>T²/a³</th></tr>';
+  k3.forEach(r=>html+='<tr><td>'+r.join('</td><td>')+'</td></tr>');html+='</table>';
+  html+='<div style="margin-top:6px"><b>② 面积速度</b> 近/远日点附近单日真近点角位移（°）：</div>';
+  html+='<table><tr><th>行星</th><th>近日点</th><th>远日点</th><th>判定</th></tr>';
+  area.forEach(r=>html+='<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td class="'+
+    (r[3]?'pass':'fail')+'">'+(r[3]?'PASS':'FAIL')+'</td></tr>');
+  html+='</table><div style="margin-top:6px"><b>③ 自转与轴倾</b>（IAU 逆行惯例：金星 −5832.5 h / 天王星 −17.2 h；轴倾 177.4° / 97.8° 已施加）</div>';
+  html+='<table><tr><th>行星</th><th>自转 h</th><th>轴倾 °</th><th>逆行/大倾角</th></tr>';
+  spin.forEach(r=>html+='<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td class="'+
+    (r[3]?'pass':'warn')+'">'+(r[3]?'是':'—')+'</td></tr>');
+  html+='</table><div class="sub" style="margin-top:6px">④ 开普勒方程牛顿迭代 tol 1e-6°；⑤ 参照值内联自 golden file '+
+    '<code>reference.json</code>（由 <code>reference_ephem.py</code> 生成），可用 <code>node verify.mjs</code> 独立复核；'+
+    '<code>--online</code> 可切换 JPL Horizons，须目标端点返回 200 且响应含 $$SOE 块，否则明确报因并降级。'+
+    '本自检面板由普通脚本运行，<b>不依赖 Three.js CDN</b>。</div>';
+  return {html,rows,k3,area,comparison:cmp};
+}
+const st=selfTest();
+document.getElementById('stbody').innerHTML=st.html;
+window.__SELFTEST__=st;
+console.log('[selftest] 第三方对照 '+st.comparison.count+'/16 '+(st.comparison.pass?'PASS':'FAIL'));
+window.SOLAR = Object.freeze({CONFIG,TABLES,ELEMENTS,BODIES,SUN,D2R,R2D,jdUTC,jdTDB,
+  elementsAt,solveKepler,trueAnomaly,angDiff,eclFromE,stateOf,
+  orbitRadius,bodyRadius,orbitScale,bodyScale,REFERENCE,comparisonTable,selfTest});
+})();
+</script>
+<script>
+/* ==========================================================================
+   降级视图渲染器 —— 独立普通脚本，不依赖 THREE / 网络 / WebGL
+   用 window.SOLAR.stateOf() 现场计算 J2000 时刻八大行星的日心黄经与日距，
+   再画成内联 SVG；因此降级图不是贴死的图片，仍出自同一套可核验公式。
+   ========================================================================== */
+(function(){
+"use strict";
+function hex(n){return '#'+(n>>>0).toString(16).padStart(6,'0');}
+function render(reason){
+  if(window.__FALLBACK__)return;
+  window.__FALLBACK__=true;
+  window.__BOOTED=true;
+  if(window.__bootTimer)clearTimeout(window.__bootTimer);
+  var le=document.getElementById('loaderr');if(le)le.style.display='none';
+  document.body.classList.add('fb-on');
+  var box=document.getElementById('fallback');if(box)box.style.display='block';
+  var rs=document.getElementById('fb-reason');if(rs)rs.textContent='原因：'+reason;
+  var S=window.SOLAR,svg=document.getElementById('fb-svg');
+  if(!S||!svg)return;
+  var jd=S.CONFIG.J2000_JD,cx=450,cy=260,maxR=222;
+  var norm=function(r){return 16+(maxR-16)*Math.log10(1+r/0.15)/Math.log10(1+30.1/0.15);};
+  var o=['<defs><radialGradient id="sunG"><stop offset="0%" stop-color="#FFE9A8"/>'+
+         '<stop offset="60%" stop-color="#F5A623"/><stop offset="100%" stop-color="#B45B06"/>'+
+         '</radialGradient></defs>'];
+  o.push('<circle cx="'+cx+'" cy="'+cy+'" r="'+maxR+'" fill="none" stroke="rgba(46,217,195,.10)"/>');
+  S.BODIES.forEach(function(b,i){
+    var st=S.stateOf(i,jd);
+    var R=norm(st.el.a),r=norm(st.r),rad=st.lon*S.D2R;
+    var x=cx+r*Math.cos(rad),y=cy-r*Math.sin(rad),col=hex(b.color);
+    o.push('<circle cx="'+cx+'" cy="'+cy+'" r="'+R.toFixed(2)+'" fill="none" stroke="'+col+
+           '" stroke-opacity=".34" stroke-width="1"/>');
+    o.push('<circle cx="'+x.toFixed(2)+'" cy="'+y.toFixed(2)+'" r="'+
+           (3.5+Math.min(7,b.D/22000)).toFixed(1)+'" fill="'+col+
+           '" stroke="#EAF2FA" stroke-opacity=".45"/>');
+    o.push('<text x="'+(x+9).toFixed(1)+'" y="'+(y-7).toFixed(1)+
+           '" fill="#EAF2FA" font-size="12" font-family="Microsoft YaHei,sans-serif">'+b.name+'</text>');
+  });
+  o.push('<circle cx="'+cx+'" cy="'+cy+'" r="14" fill="url(#sunG)"/>');
+  o.push('<text x="'+cx+'" y="'+(cy+32)+'" fill="#F5A623" font-size="12" text-anchor="middle" '+
+         'font-family="Microsoft YaHei,sans-serif">太阳</text>');
+  o.push('<text x="18" y="28" fill="#2ED9C3" font-size="14" '+
+         'font-family="Microsoft YaHei,sans-serif">J2000 · 日心黄经俯视示意（静态降级，非真实比例）</text>');
+  o.push('<text x="18" y="500" fill="#9DB3CC" font-size="11" '+
+         'font-family="Microsoft YaHei,sans-serif">轨道 = R(a)；行星位置半径 = R(当前日距 r)；由本页 stateOf() 现场计算</text>');
+  svg.innerHTML=o.join('');
+  var st0=window.__SELFTEST__,v=document.getElementById('fb-verdict');
+  if(v&&st0)v.innerHTML='内置数值自检：<b class="'+(st0.comparison.pass?'pass':'fail')+'">'+
+    st0.comparison.count+'/16 '+(st0.comparison.pass?'PASS':'FAIL')+'</b> · 判卷人 '+
+    S.REFERENCE.source+' v'+S.REFERENCE.version+' · 最大 |Δ黄经| '+
+    st0.comparison.maxDLon.toFixed(4)+'° &lt; 阈值 '+S.REFERENCE.toleranceDeg+'°';
+  console.log('[fallback] 已切换静态视图：'+reason);
+}
+window.__SOLAR_FALLBACK__=render;
+})();
+</script>
+<script src="./vendor/three.iife.js"></script>
+<script>
+/* 3D-LAYER-BEGIN —— 普通脚本 + 全局 THREE；无需 importmap / ESM / 静态服务。
+   任何一步失败（探测失败、bundle 缺失、初始化异常、首帧异常、上下文丢失）
+   都调用 window.__SOLAR_FALLBACK__() 出静态图，绝不白屏。 */
+(function(){
+"use strict";
+function fallback(reason){
+  if(window.__SOLAR_FALLBACK__)window.__SOLAR_FALLBACK__(reason);
+}
+var probe=window.__WEBGL__||{ok:false,reason:'WebGL 探测脚本未执行'};
+if(!probe.ok){fallback(probe.reason);return;}
+if(!window.THREE||typeof window.THREE.WebGLRenderer!=='function'||
+   typeof window.THREE.OrbitControls!=='function'){
+  fallback('vendor/three.iife.js 未加载或导出不完整');return;
+}
+const THREE=window.THREE;
+try{
+const {CONFIG,TABLES,ELEMENTS,BODIES,SUN,D2R,R2D,jdUTC,jdTDB,elementsAt,solveKepler,
+  trueAnomaly,angDiff,eclFromE,stateOf,orbitRadius,bodyRadius,orbitScale,bodyScale} = window.SOLAR;
+function toThree(p,s){return new THREE.Vector3(p.X*s,p.Z*s,-p.Y*s);}
+/* ==========================================================================
+   3. 固定种子随机数与程序化资产（非真实影像；声明见 HUD 与 SOURCES.md）
+   ========================================================================== */
+function mulberry32(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+function planetTexture(body){
+  const rng=mulberry32(CONFIG.SEED+body.seed);
+  const c=document.createElement('canvas');c.width=256;c.height=128;
+  const g=c.getContext('2d');
+  const base=new THREE.Color(body.color);
+  const hsl={};base.getHSL(hsl);
+  for(let y=0;y<128;y++){
+    const lat=Math.abs(y/128-.5)*2;
+    const wave=Math.sin(y/128*Math.PI*body.bands*2+body.seed)*.5+.5;
+    const noise=(rng()-.5)*.10;
+    const l=Math.max(.08,Math.min(.86,hsl.l+(wave-.5)*.16+noise-lat*.10));
+    const col=new THREE.Color().setHSL(hsl.h,hsl.s,l);
+    g.fillStyle='#'+col.getHexString();g.fillRect(0,y,256,1);
+  }
+  for(let k=0;k<70;k++){
+    const x=rng()*256,y=rng()*128,r=2+rng()*11;
+    g.fillStyle='rgba('+(rng()>.5?'255,255,255':'0,0,0')+','+(0.02+rng()*0.05).toFixed(3)+')';
+    g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();
+  }
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function sunTexture(){
+  const rng=mulberry32(CONFIG.SEED+7);
+  const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d');
+  g.fillStyle='#F5A623';g.fillRect(0,0,256,128);
+  for(let k=0;k<420;k++){
+    g.fillStyle='rgba('+(rng()>.5?'255,240,180':'190,70,10')+','+(0.05+rng()*.3).toFixed(3)+')';
+    g.beginPath();g.arc(rng()*256,rng()*128,1+rng()*6,0,Math.PI*2);g.fill();
+  }
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function ringMesh(colorA){
+  const geo=new THREE.RingGeometry(1.35,2.35,192,6);
+  const pos=geo.attributes.position, colors=[];
+  const rng=mulberry32(CONFIG.SEED+97);
+  for(let i=0;i<pos.count;i++){
+    const r=Math.hypot(pos.getX(i),pos.getY(i));
+    let v=.55+.28*Math.sin(r*26)+.10*(rng()-.5);
+    if(r>1.94&&r<2.02)v=.03;                 // 卡西尼缝
+    if(r<1.42||r>2.30)v*=.35;
+    const c=new THREE.Color(colorA).multiplyScalar(Math.max(.02,Math.min(1,v)));
+    colors.push(c.r,c.g,c.b);
+  }
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  return new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:.85,depthWrite:false}));
+}
+function starField(){
+  const rng=mulberry32(CONFIG.SEED+131);
+  const pos=[],col=[];
+  for(let i=0;i<CONFIG.STAR_COUNT;i++){
+    const u=rng()*2-1,th=rng()*Math.PI*2,r=900+rng()*700,s=Math.sqrt(1-u*u);
+    pos.push(r*s*Math.cos(th),r*u,r*s*Math.sin(th));
+    const b=.35+rng()*.65;col.push(b,b*(.9+rng()*.1),b*(.85+rng()*.15));
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  return new THREE.Points(g,new THREE.PointsMaterial({size:1.6,vertexColors:true,sizeAttenuation:false,transparent:true,opacity:.9}));
+}
+function eclipticGrid(mode){
+  const verts=[],max=mode==='true'?CONFIG.VIEW.trueUnitsPerAU*32:orbitRadius(31);
+  for(let k=1;k<=6;k++){
+    const R=max*k/6;
+    for(let j=0;j<128;j++){
+      const a=j/128*Math.PI*2,b=(j+1)/128*Math.PI*2;
+      verts.push(R*Math.cos(a),0,R*Math.sin(a),R*Math.cos(b),0,R*Math.sin(b));
+    }
+  }
+  for(let k=0;k<12;k++){
+    const a=k/12*Math.PI*2;
+    verts.push(0,0,0,max*Math.cos(a),0,max*Math.sin(a));
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+  return new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x2ED9C3,transparent:true,opacity:.16}));
+}
+
+/* ==========================================================================
+   4. 场景
+   ========================================================================== */
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,CONFIG.DPR_MAX));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(52,window.innerWidth/window.innerHeight,.05,6000);
+camera.position.set(0,120,205);
+const controls=new OrbitControls(camera,canvas);
+controls.enableDamping=true;controls.dampingFactor=.07;controls.minDistance=6;controls.maxDistance=4000;
+
+scene.add(new THREE.AmbientLight(0x9DB3CC,.20));
+const sunLight=new THREE.PointLight(0xFFF0CF,2.6,0,0);scene.add(sunLight);
+scene.add(starField());
+
+const sphereGeo=new THREE.SphereGeometry(1,48,32);
+const markerGeo=new THREE.SphereGeometry(1,12,8);
+const sunGroup=new THREE.Group();
+const sunMesh=new THREE.Mesh(sphereGeo,new THREE.MeshBasicMaterial({map:sunTexture(),color:0xffffff}));
+sunGroup.add(sunMesh);scene.add(sunGroup);
+const sunMarker=new THREE.Mesh(markerGeo,new THREE.MeshBasicMaterial({color:0xFFB84D}));sunMarker.visible=false;sunGroup.add(sunMarker);
+
+const planets=BODIES.map((b,i)=>{
+  const group=new THREE.Group();scene.add(group);
+  const tilt=new THREE.Group();tilt.rotation.y=b.en==='Earth'?0:D2R*0;group.add(tilt);
+  // 轴倾角：绕 three 的 Z 轴倾斜；方向按各行星 Ω 近似（非 WGCCRE 精确极向量）
+  tilt.rotation.z=D2R*b.obl;
+  const mesh=new THREE.Mesh(sphereGeo,new THREE.MeshStandardMaterial({map:planetTexture(b),roughness:.88,metalness:0}));
+  tilt.add(mesh);
+  const marker=new THREE.Mesh(markerGeo,new THREE.MeshBasicMaterial({color:b.color}));marker.visible=false;group.add(marker);
+  let ring=null;
+  if(b.ring){ring=ringMesh(b.color);ring.rotation.x=Math.PI/2;tilt.add(ring);}
+  let moon=null;
+  if(b.moon){
+    moon=new THREE.Mesh(sphereGeo,new THREE.MeshStandardMaterial({color:0xC9CDD2,roughness:.95}));
+    group.add(moon);
+  }
+  const orbitLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:b.color,transparent:true,opacity:.55}));
+  scene.add(orbitLine);
+  const label=document.createElement('div');label.className='lbl';label.textContent=b.name;
+  document.getElementById('labels').appendChild(label);
+  return {...b,i,group,tilt,mesh,marker,ring,moon,orbitLine,label};
+});
+
+let grid=eclipticGrid('view');grid.visible=false;scene.add(grid);
+let mode='view',orbitsOn=true,labelsOn=true,followIdx=-1;
+let playing=!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+let daysPerSecond=CONFIG.DAYS_PER_SECOND;
+let simMs=Date.parse(CONFIG.START_UTC),lastFrame=performance.now();
+
+const followSel=document.getElementById('follow');
+planets.forEach(p=>{const o=document.createElement('option');o.value=p.i;o.textContent=p.name;followSel.appendChild(o);});
+
+function rebuildOrbits(){
+  const jd=jdTDB(simMs);
+  planets.forEach(p=>{
+    const st=stateOf(p.i,jd),s=orbitScale(mode,st.el.a);
+    const pts=[];
+    for(let k=0;k<=CONFIG.ORBIT_SAMPLES;k++){
+      const q=eclFromE(k*360/CONFIG.ORBIT_SAMPLES,st.el);
+      pts.push(toThree(q,s));
+    }
+    p.orbitLine.geometry.dispose();
+    p.orbitLine.geometry=new THREE.BufferGeometry().setFromPoints(pts);
+    p.orbitLine.visible=orbitsOn;
+  });
+  scene.remove(grid);grid.geometry.dispose();grid.material.dispose();
+  grid=eclipticGrid(mode);grid.visible=gridWasOn;scene.add(grid);
+}
+let gridWasOn=false;
+function applyMode(){
+  const sunS=bodyScale(mode,SUN.D);
+  sunMesh.visible=mode==='view';sunMarker.visible=mode==='true';
+  sunMesh.scale.setScalar(sunS);
+  sunMarker.scale.setScalar(mode==='true'?CONFIG.VIEW.markerSize*2.4:sunS);
+  planets.forEach(p=>{
+    const s=bodyScale(mode,p.D);
+    p.mesh.visible=mode==='view';p.marker.visible=mode==='true';
+    p.mesh.scale.setScalar(s);
+    p.marker.scale.setScalar(mode==='true'?CONFIG.VIEW.markerSize:s);
+    if(p.ring)p.ring.visible=mode==='view';
+    if(p.moon)p.moon.visible=mode==='view';
+  });
+  rebuildOrbits();
+  if(mode==='true'){camera.position.set(0,900,2400);controls.target.set(0,0,0);}
+  else{camera.position.set(0,120,205);controls.target.set(0,0,0);}
+  controls.update();
+}
+
+/* ==========================================================================
+   5. 每帧更新：delta-time 累积仿真时间；公转与自转独立计时
+   ========================================================================== */
+function updateBodies(){
+  const jd=jdTDB(simMs);
+  const days=jd-CONFIG.J2000_JD;
+  for(const p of planets){
+    const st=stateOf(p.i,jd);
+    const s=orbitScale(mode,st.el.a);
+    p.group.position.copy(toThree(st.p,s));
+    // 自转：W = W0 + (360/|P|)·d，W0=0；逆行由 >90° 轴倾表达
+    p.mesh.rotation.y=D2R*(days*360/(Math.abs(p.rot)/24));
+    p.current=st;
+    if(p.moon){
+      const ang=days*2*Math.PI/27.321661;      // 简化圆轨道，恒星月
+      const mr=Math.max(bodyScale(mode,p.D)*2.2,1.8);
+      p.moon.position.set(mr*Math.cos(ang),0,mr*Math.sin(ang));
+      p.moon.scale.setScalar(Math.max(bodyScale(mode,p.D)*.27,.18));
+    }
+  }
+  const date=new Date(simMs);
+  document.getElementById('simdate').textContent=
+    date.toISOString().replace('T',' ').replace('.000Z',' UTC')+
+    '  ·  JD(TDB) '+jd.toFixed(5);
+  updateLabels();
+}
+const _v=new THREE.Vector3();
+function updateLabels(){
+  const w=window.innerWidth,h=window.innerHeight;
+  const show=labelsOn;
+  for(const p of planets){
+    if(!show){p.label.style.display='none';continue;}
+    _v.copy(p.group.position).project(camera);
+    if(_v.z>1){p.label.style.display='none';continue;}
+    p.label.style.display='block';
+    p.label.style.left=((_v.x*.5+.5)*w)+'px';
+    p.label.style.top=((-_v.y*.5+.5)*h)+'px';
+  }
+}
+function frame(now){
+  if(window.__FALLBACK__)return;
+  try{
+    const dt=Math.min((now-lastFrame)/1000,.1);lastFrame=now;
+    if(playing)simMs+=dt*daysPerSecond*86400000;
+    updateBodies();
+    if(followIdx>=0){
+      const t=planets[followIdx].group.position;
+      controls.target.lerp(t,.08);
+    }
+    controls.update();
+    renderer.render(scene,camera);
+    requestAnimationFrame(frame);
+  }catch(err){
+    console.error('[3D] 渲染帧失败',err);
+    fallback('渲染帧异常：'+(err&&err.message?err.message:String(err)));
+  }
+}
+
+/* ==========================================================================
+   6. 交互
+   ========================================================================== */
+const $=id=>document.getElementById(id);
+$('play').textContent=playing?'暂停':'播放';
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'暂停':'播放';$('play').classList.toggle('on',!playing);};
+$('speed').onchange=e=>{daysPerSecond=parseFloat(e.target.value);};
+$('j2000').onclick=()=>{simMs=Date.parse('2000-01-01T12:00:00Z');rebuildOrbits();};
+$('jump').onclick=()=>{
+  const v=$('dateInput').value;if(!v)return;
+  const ms=Date.parse(v+'Z');if(!isNaN(ms)){simMs=ms;rebuildOrbits();}
+};
+$('scale').onclick=()=>{
+  mode=mode==='view'?'true':'view';
+  const b=$('scale');b.textContent=mode==='view'?'观赏比例':'真实比例';b.classList.toggle('on',mode==='view');
+  applyMode();
+};
+$('orbits').onclick=()=>{orbitsOn=!orbitsOn;$('orbits').classList.toggle('on',orbitsOn);
+  planets.forEach(p=>p.orbitLine.visible=orbitsOn);};
+$('labelBtn').onclick=()=>{labelsOn=!labelsOn;$('labelBtn').classList.toggle('on',labelsOn);};
+$('gridBtn').onclick=()=>{gridWasOn=!gridWasOn;grid.visible=gridWasOn;$('gridBtn').classList.toggle('on',gridWasOn);};
+followSel.onchange=e=>{followIdx=e.target.value===''?-1:parseInt(e.target.value,10);
+  if(followIdx<0)controls.target.set(0,0,0);};
+
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+let downPt=null;
+canvas.addEventListener('pointerdown',ev=>{downPt={x:ev.clientX,y:ev.clientY};});
+canvas.addEventListener('pointerup',ev=>{
+  if(!downPt||Math.hypot(ev.clientX-downPt.x,ev.clientY-downPt.y)>5){downPt=null;return;}
+  downPt=null;
+  mouse.x=ev.clientX/window.innerWidth*2-1;mouse.y=-(ev.clientY/window.innerHeight*2-1);
+  ray.setFromCamera(mouse,camera);
+  const targets=[];planets.forEach(p=>targets.push(p.mesh,p.marker));
+  const hit=ray.intersectObjects(targets,false)[0];
+  const card=$('infocard');
+  if(!hit){card.style.display='none';return;}
+  const p=planets.find(q=>q.mesh===hit.object||q.marker===hit.object);
+  if(!p)return;
+  const st=p.current||stateOf(p.i,jdTDB(simMs));
+  const periodDays=p.P;                            // NASA Fact Sheet 独立周期
+  card.innerHTML='<div class="h">'+p.name+' · '+p.en+'</div>'+
+    '<div><span class="k">直径</span><span class="v">'+p.D.toLocaleString()+' km</span></div>'+
+    '<div><span class="k">半长轴 a</span><span class="v">'+st.el.a.toFixed(5)+' AU</span></div>'+
+    '<div><span class="k">偏心率 e</span><span class="v">'+st.el.e.toFixed(6)+'</span></div>'+
+    '<div><span class="k">轨道周期</span><span class="v">'+periodDays.toFixed(1)+' d</span></div>'+
+    '<div><span class="k">当前日距</span><span class="v">'+st.r.toFixed(5)+' AU</span></div>'+
+    '<div><span class="k">日心黄经</span><span class="v">'+st.lon.toFixed(3)+'°</span></div>'+
+    '<div><span class="k">自转周期</span><span class="v">'+p.rot+' h'+(p.rot<0?'（逆行）':'')+'</span></div>'+
+    '<div><span class="k">轴倾角</span><span class="v">'+p.obl+'°</span></div>'+
+    '<div class="sub" style="margin-top:6px">仿真日期：'+new Date(simMs).toISOString().slice(0,16).replace('T',' ')+' UTC</div>';
+  card.style.display='block';
+});
+window.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();$('play').click();}
+  if(e.key==='j'||e.key==='J')$('j2000').click();
+});
+window.addEventListener('resize',()=>{
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,CONFIG.DPR_MAX));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();
+});
+
+
+/* ==========================================================================
+   8. 启动
+   ========================================================================== */
+applyMode();
+updateBodies();
+$('dateInput').value='2026-01-01T00:00';
+canvas.addEventListener('webglcontextlost',function(ev){
+  ev.preventDefault();fallback('WebGL 上下文已丢失（显卡／浏览器回收）');
+});
+window.__BOOTED=true;clearTimeout(window.__bootTimer);
+window.__MODE3D__=probe.renderer;
+document.getElementById('loaderr').style.display='none';
+requestAnimationFrame(frame);
+}catch(err){
+  console.error('[3D] 初始化失败',err);
+  fallback('3D 初始化异常：'+(err&&err.message?err.message:String(err)));
+}
+})();
+</script>
+</body>
+</html>
