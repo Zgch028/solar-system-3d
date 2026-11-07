@@ -1,6 +1,6 @@
 # SOURCES.md · 太阳系八大行星动态运转 3D 作品
 
-- 生成日期：2026-11-06；最后修订：2026-11-07（**兼容加固 v1.2**：IIFE 全局包去 importmap/ESM、WebGL 静态降级、og 分享元信息与预览图、发布就绪包；物理与数值未改动）
+- 生成日期：2026-11-06；最后修订：2026-11-07（**兼容加固 v1.2**：IIFE 全局包去 importmap/ESM、WebGL 静态降级、og 分享元信息与预览图、发布就绪包；**v1.3**：真机反馈暴露的 `OrbitControls` 符号引用缺陷修复、运行时冒烟测试、修复版重新发布与线上 23/23 复核；物理与数值全程未改动）
 - 精度等级：**教学／科普级「物理可核验」** —— 不是艺术动画，也不是航天级星历
 - 交付物：**`太阳系八大行星动态运转.html`**（中文主文件，内置数值自检面板与 16 组误差表）、`index.html`（薄重定向 + 完整 og 元信息）、`assets/preview.png`（1200×630 分享卡片图）、`vendor/`（Three.js r160 ESM 原件 + 由其确定性生成的 `three.iife.js` 全局包 + OrbitControls + MIT 许可证）、`build/`（IIFE 构建、预览图生成、发布目录生成、基址替换、HTTP 验收脚本）、`publish/`（GitHub Pages 干净发布版）、`README.md`、`verify.mjs`（独立校验）、`reference_ephem.py`（参照数据生成器）、`reference.json`（golden file）、`sync_reference.py`（内联快照同步）、`verify_page.py`（页面↔命令行一致性）、`verify_compat.py`（兼容加固 8 项验收）、本文件
 - 规格依据：提示词 V1（网页可交互路线），见 `../01_方法论沉淀/四问框架与两版提示词_v1.0_20261106.md` §4
@@ -260,7 +260,7 @@ lon_J2000 = (lon_date − p/3600) mod 360
 
 **仍待人工确认**：真实手机微信内核的端到端 3D 渲染与分享卡片抓取（本地 stub 验收不能替代）；`github.io` 为境外未备案域名，微信内打开可能被提示「在浏览器中打开」。
 
-**新增已知限制**：① 未在真实手机微信／小红书内核中做端到端渲染确认（需人工打开线上链接）；② `og:image` 为绝对 URL，仓库或 owner 改名必须重跑 `set_pages_base.py` 并同步更新 README；③ `github.io` 为境外未备案域名，微信内置浏览器可能提示「在浏览器中打开」，属平台策略，非作品缺陷；④ IIFE 产物未压缩（1.3 MB），换取可逐字审计。
+**新增已知限制**：① 首次真机打开已实施（并暴露 §4.6 缺陷），但**修复版**尚未在真实手机微信内核做端到端渲染确认，需人工重开线上链接；② `og:image` 为绝对 URL，仓库或 owner 改名必须重跑 `set_pages_base.py` 并同步更新 README；③ `github.io` 为境外未备案域名，微信内置浏览器可能提示「在浏览器中打开」，属平台策略，非作品缺陷；④ IIFE 产物未压缩（1.3 MB），换取可逐字审计。
 
 ### §4.6 手机微信真机首次打开暴露的兼容性缺陷与修复（2026-11-07，v1.3）
 
@@ -281,6 +281,8 @@ lon_J2000 = (lon_date − p/3600) mod 360
 **回归有效性（负向验证，实跑）**：把构造控制器处人为改回裸 `OrbitControls` 后，对临时副本执行 `node build/verify_runtime.mjs --root <副本>`，以退出码 1 失败并输出 `OrbitControls 构造次数 = 0`、`3D 层意外触发降级视图：原因：3D 初始化异常：OrbitControls is not defined`、`[3D] 初始化失败 ReferenceError: OrbitControls is not defined` —— 与截图同一异常。证明该测试确实能拦住此缺陷，而不是摆设。
 
 **修复后验收（实跑）**：`verify_compat.py` 在作品目录与 `publish/` 各 **9/9**；`build/verify_http.py` **16/16**；`node verify.mjs` 仍 **16/16 PASS、最大 |Δ黄经| 0.1437°**，`verify_page.py` 逐行差 **0.00e+00**；规格书 V1 与技能包 `prompts-v1-web.md` 仍逐字一致（3517 字符）。`publish/` 由 22 文件增至 **23 文件 / 约 2.79 MB**（新增 `build/verify_runtime.mjs`）。物理与数值一行未动。
+
+**修复版发布与线上复核（2026-11-07，v1.3）**：用户重新生成一枚一次性 classic PAT（`repo` scope，仅作进程环境变量、不落盘、不回显），用同一个已验证脚本 `build/publish_github.py` 做增量提交。只读比对 git tree 得到 **7 个变更**（6 个修改：中文主 HTML、`README.md`、`SOURCES.md`、`verify_compat.py`、`build/make_publish.py`、`build/verify_http.py`；1 个新增：`build/verify_runtime.mjs`），其余 16 个 blob 未动。推送后遍历 `publish/` **全部 23 个文件**逐项线上复核：HTTP 200 且**字节哈希 23/23 与本地一致**；git tree 亦为 23 blob、内容不一致 0 个、线上多出 0 个；线上主文件含 `new THREE.OrbitControls(camera,canvas)`、不含裸 `new OrbitControls(`；`og:url` / `og:image` / canonical 仍为小写 `https://zgch028.github.io/solar-system-3d/`。提交 hash 以仓库 `main` 最新一条为准（此处不写死，避免文档与远端分叉）。**§4.5 ⑤ 表格记录的是 v1.2 首发快照，不代表当前线上版本。**
 
 **仍待人工**：修复版上线后，用同一台手机微信重新打开链接，确认 3D 正常渲染、拖拽旋转／缩放可用、分享卡片抓取正常；真机内核能力不能被任何 Node stub 替代。
 
