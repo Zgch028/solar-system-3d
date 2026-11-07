@@ -6,7 +6,7 @@
 仓库改名时不能只改一处，故用本脚本幂等替换。
 
 用法：
-  python3 build/set_pages_base.py solar-system-3d              # owner 默认 Zgch028
+  python3 build/set_pages_base.py solar-system-3d              # owner 默认 zgch028（强制小写）
   python3 build/set_pages_base.py my-new-repo MyOrg
   python3 build/set_pages_base.py --show                       # 只显示当前基址，不改文件
 """
@@ -38,6 +38,8 @@ repo = sys.argv[1].strip('/')
 owner = sys.argv[2] if len(sys.argv) > 2 else 'Zgch028'
 if not re.fullmatch(r'[A-Za-z0-9_.-]+', repo) or not re.fullmatch(r'[A-Za-z0-9_.-]+', owner):
     raise SystemExit('owner / repo 只能含字母、数字、点、下划线、连字符。')
+# GitHub Pages 实际域名恒为小写；og:url / canonical 必须与真实地址逐字一致。
+owner = owner.lower()
 new_base = 'https://%s.github.io/%s/' % (owner, repo)
 
 for f in FILES:

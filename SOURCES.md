@@ -231,7 +231,7 @@ lon_J2000 = (lon_date − p/3600) mod 360
 **③ og 分享元信息与预览图**
 
 - 主文件与 `index.html` 均带 `og:type / site_name / title / description / url / image / image:width / image:height / image:alt`、`twitter:card / title / description / image`、`description`、`theme-color`、`canonical`；两页 url/image/title/description 由 `verify_compat.py` 逐项比对一致。
-- `og:image` 指向 `https://Zgch028.github.io/solar-system-3d/assets/preview.png`（1200×630 PNG，143 153 字节）。该绝对 URL **仅由分享平台爬虫在服务端读取，页面运行时不会请求**；`<script src>` 与样式表引用中运行时外链数仍为 0。仓库改名用 `python3 build/set_pages_base.py <repo> [owner]` 幂等批量替换。
+- `og:image` 指向 `https://zgch028.github.io/solar-system-3d/assets/preview.png`（1200×630 PNG，143 153 字节）。该绝对 URL **仅由分享平台爬虫在服务端读取，页面运行时不会请求**；`<script src>` 与样式表引用中运行时外链数仍为 0。仓库改名用 `python3 build/set_pages_base.py <repo> [owner]` 幂等批量替换。
 - 预览图由 `build/make_preview.py` 读取 golden file `reference.json` 的 J2000 历元生成：轨道圆取 JPL 1800–2050 表半长轴 a、行星点取参照星历当前日距 r，与页面降级图同口径；背景星点固定种子 20261106，程序化生成、非真实影像。
 - 页面 HUD 与 og:description 均标注 **AI 辅助创作**，并保留「程序化纹理／非真实星表」声明。
 
@@ -241,7 +241,24 @@ lon_J2000 = (lon_date − p/3600) mod 360
 
 `python3 verify_compat.py`（作品目录）与 `python3 verify_compat.py --root publish` 各 **8/8 通过**：无 importmap/ESM、零运行时外链、og 齐全一致、预览图有效、IIFE 导出完整、WebGL 禁用端到端降级、16 组星历仍 16/16 PASS、页面与命令行自检逐行一致（最大差 0.00e+00，最大 |Δ黄经| 0.1437°）。`build/verify_http.py` 另在临时静态服务上完成 15/15 个资源的 200 / MIME / 字节哈希验收。
 
-**⑤ 发布执行状态**：`publish/` 已就绪且双目录验收通过，但**远端发布尚未执行**。原因可证伪：当前会话的 GitHub 能力只能读写小文本，无法上传 1.3 MB 的 `three.iife.js` 与 143 KB 的 `preview.png`；本机 `gh` CLI 未安装、无 git 凭据、无 `GITHUB_TOKEN`。已写好零依赖发布脚本 `build/publish_github.py`：用 GitHub Blob API 的 base64 通道无损上传二进制 → 一次 commit 推完 22 文件 → 开启 Pages（main / 根目录）→ 轮询站点 HTTP 200；`--dry-run` 已演练通过。脚本不随站点发布、不写入任何凭据；缺的只是 token，或由用户改走网页手动上传／其他静态托管。
+**⑤ 发布已执行（2026-11-07）**
+
+| 项 | 实际结果 |
+|---|---|
+| 仓库 | `https://github.com/Zgch028/solar-system-3d`，`private=False`，默认分支 `main` |
+| 站点 | **`https://zgch028.github.io/solar-system-3d/`**（GitHub Pages，main / 根目录，返回 HTTP 200） |
+| 首次成功提交 | `75f66fb4`（22 文件 / 2 912 764 字节）；其后一次增量提交仅把 og 绝对基址统一为小写域名 |
+| 线上验收 | 12 个关键资源（含中文主文件、1.3 MB IIFE 包、PNG 预览图、golden file、三套校验脚本）全部 HTTP 200、MIME 正确、**字节哈希与本地 `publish/` 逐一一致**；根路径 200 且带完整 og 元信息 |
+
+发布链路用零依赖脚本 `build/publish_github.py`：GitHub Blob API 的 base64 通道无损上传二进制 → 一次 commit 推完 22 文件 → 开启 Pages → 轮询站点 200。发布过程中按实测报错修了三处，均属「远端 API 的真实约束」，未改动任何物理与数值：
+
+1. 连接层偶发 `RemoteDisconnected` / `TimeoutError`：只对未收到响应的连接层异常做有限退避并**重新构造 Request**；`HTTPError` 原样返回、绝不重试，避免把 4xx/5xx 误判为抖动。
+2. `auto_init=False` 的空仓库连 `POST /git/blobs` 都返回 `409 Git Repository is empty`：必须先用 **Contents API** 造出第一个提交，Git Data API 才可用；初始化文件选 `README.md`，随后被同一批文件覆盖，最终树仍是干净的 22 文件。
+3. 读取引用是 `/git/ref/heads/main`（单数 `ref`），**更新引用是 `/git/refs/heads/main`（复数 `refs`）**；两路径合并成一个变量会导致 PATCH 返回 404。现已分开。另把分支名改为读取仓库实际 `default_branch`，不再硬编码 `main`。
+
+凭据处理：使用一次性 classic PAT（`repo` scope），**仅作为进程环境变量存在**，脚本不打印、不写入文件、不写进仓库内容或工作日志；站点发布包中不含任何凭据。该令牌已完成使命，应在 GitHub → Settings → Developer settings → Tokens (classic) 立即 Delete。
+
+**仍待人工确认**：真实手机微信内核的端到端 3D 渲染与分享卡片抓取（本地 stub 验收不能替代）；`github.io` 为境外未备案域名，微信内打开可能被提示「在浏览器中打开」。
 
 **新增已知限制**：① 未在真实手机微信／小红书内核中做端到端渲染确认（需人工打开线上链接）；② `og:image` 为绝对 URL，仓库或 owner 改名必须重跑 `set_pages_base.py` 并同步更新 README；③ `github.io` 为境外未备案域名，微信内置浏览器可能提示「在浏览器中打开」，属平台策略，非作品缺陷；④ IIFE 产物未压缩（1.3 MB），换取可逐字审计。
 
@@ -334,4 +351,4 @@ python3 verify_page.py
 | 5 Stellarium / NASA Eyes 截图并排 | 未做（需人工第三方软件） |
 | 6 SOURCES.md + 已知取舍声明 | 本文件 |
 
-**结论：全部可由本机自动核验的部分（含第三方逐项误差表）已通过，不宣称「整体达标」的部分只剩三类** —— ① JPL 原页自带精度表原值未取得（改用实测误差，不编造）；② Stellarium / NASA Eyes 截图并排需人工；③ 真实手机微信／小红书内核的端到端渲染确认需人工打开线上链接（本地仅做了 DOM stub 模拟，见 §4.5）。此外 JPL Horizons 在线对照虽因网络阻断未执行，但已由更独立的 VSOP87 参照等价替代并公开声明，未静默掩盖。兼容加固与发布就绪包未改动任何物理或数值，16/16 PASS 与 0.1437° 结论保持一致。**发布到 GitHub Pages 的最后一步因缺少上传二进制所需的凭据尚未执行**（§4.5 ⑤），发布目录与脚本均已就绪。
+**结论：全部可由本机自动核验的部分（含第三方逐项误差表）已通过，不宣称「整体达标」的部分只剩三类** —— ① JPL 原页自带精度表原值未取得（改用实测误差，不编造）；② Stellarium / NASA Eyes 截图并排需人工；③ 真实手机微信／小红书内核的端到端渲染确认需人工打开线上链接（本地仅做了 DOM stub 模拟，见 §4.5）。此外 JPL Horizons 在线对照虽因网络阻断未执行，但已由更独立的 VSOP87 参照等价替代并公开声明，未静默掩盖。兼容加固与发布就绪包未改动任何物理或数值，16/16 PASS 与 0.1437° 结论保持一致。**GitHub Pages 发布已于 2026-11-07 完成，线上 12 个关键资源与本地发布包字节哈希逐一一致**（§4.5 ⑤）；发布前后物理与数值结论不变。

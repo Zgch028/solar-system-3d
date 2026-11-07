@@ -4,7 +4,7 @@
 
 一个可交互的太阳系 3D 模型：按 JPL Standish 近似根数解开普勒椭圆推进时间，并用**独立的第三方星历**（PyEphem / VSOP87）在两个时刻逐项判卷，16/16 组对照全部 PASS，最大 |Δ黄经| 0.1437°（阈值 1°）。
 
-> 在线地址：<https://Zgch028.github.io/solar-system-3d/>
+> 在线地址：<https://zgch028.github.io/solar-system-3d/>
 
 ## 打开方式
 
